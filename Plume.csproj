@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-Plume-a4730ed9-8a6e-44b4-8c6f-b8cbdb55c498</UserSecretsId>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- Optional: build frontend assets on `dotnet publish` when Node is available. -->

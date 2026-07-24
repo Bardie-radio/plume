@@ -7,7 +7,8 @@ Web UI **client module** for Bardie — user-aware reference client for MVP (opt
 | **Status** | **MVP** v0.1 |
 | **Image / Compose** | `plume` |
 | **OTel** | `bardie.plume` |
-| **Auth mode** | User-aware (Bearer JWT from auth modules via Kithara) |
+| **Auth mode** | User-aware (BFF session → Bearer JWT from auth modules via Kithara) |
+| **UI** | Razor SSR + Vue CSR widgets; `/control/{slug}` desk · `/player/{slug}` listen |
 
 Architecture: [docs/architecture](docs/architecture/README.md).
 

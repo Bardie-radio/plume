@@ -1,0 +1,6 @@
+flowchart TB
+  Page["/player/{slug}"]
+  Page --> NP[Now-playing prominent]
+  Page --> Audio[Audio opt-in off by default]
+  NP -->|poll| Kithara
+  Audio -->|optional| Stream["/stream/{slug}"]

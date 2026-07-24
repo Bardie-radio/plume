@@ -1,0 +1,7 @@
+flowchart TB
+  Page["/control/{slug}"]
+  Page --> Queue
+  Page --> Search
+  Page --> Transport
+  Page --> NP[Now-playing compact]
+  Queue & Search & Transport & NP -->|poll / BFF mutate| Kithara

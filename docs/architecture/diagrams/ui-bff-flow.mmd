@@ -1,0 +1,4 @@
+flowchart LR
+  Browser -->|httpOnly cookie| Plume
+  Plume -->|Bearer access JWT| Kithara["Kithara /api"]
+  Plume -.->|server-side store| Tokens[access + refresh]

@@ -1,22 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-Plume-a4730ed9-8a6e-44b4-8c6f-b8cbdb55c498</UserSecretsId>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Update="app.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.7" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.7" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.7" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.7" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.7" />
-  </ItemGroup>
+  <!-- Optional: build frontend assets on `dotnet publish` when Node is available. -->
+  <Target Name="NpmBuild" BeforeTargets="Publish" Condition="Exists('package.json')">
+    <Exec Command="npm ci" Condition="Exists('package-lock.json')" />
+    <Exec Command="npm install" Condition="!Exists('package-lock.json')" />
+    <Exec Command="npm run build" />
+  </Target>
 
 </Project>

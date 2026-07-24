@@ -4,7 +4,7 @@ Non-security footguns and doc debt. Security / mesh / guest token semantics stay
 
 | ID | Status | Summary |
 |----|--------|---------|
-| **PLUME-SCAF-001** | Open | Identity + EF + SQLite + Bootstrap scaffold contradicts thin-client / BFF design — teardown is [plume#1](https://github.com/Bardie-radio/plume/issues/1) (Phase 1) |
+| **PLUME-SCAF-001** | Closed | Identity + EF + SQLite + Bootstrap scaffold stripped in Phase 1 ([plume#1](https://github.com/Bardie-radio/plume/issues/1)); thin Razor host + Vite/Tailwind |
 | **PLUME-DOC-001** | Mitigated in docs | Older scope mentioned encode-mode on create — removed from [v0.1-scope](v0.1-scope.md); do not reintroduce in UI |
 | **PLUME-ORG-001** | Mitigated in docs | Org `bardie-*` repo URLs fixed; [06-client-modules](https://github.com/Bardie-radio/.github/blob/main/profile/docs/architecture/06-client-modules.md) exists |
 | **PLUME-POLL-001** | Accepted MVP | Poll lag / multi-controller staleness — accepted until [kithara#28](https://github.com/Bardie-radio/kithara/issues/28) (not a Plume Phase) |

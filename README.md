@@ -15,3 +15,13 @@ Architecture: [docs/architecture](docs/architecture/README.md).
 Org catalog: [client modules](https://github.com/Bardie-radio/.github/blob/main/profile/docs/architecture/06-client-modules.md). Kithara contracts: [clients](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/domains/clients.md) · [uri-routing](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/interfaces/uri-routing.md) · [rest-api](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/interfaces/rest-api.md) · [auth](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/interfaces/auth.md) · [struna-access](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/domains/struna-access.md)
 
 Org: [Bardie architecture](https://github.com/Bardie-radio/.github/tree/main/profile/docs/architecture)
+
+## Local frontend assets
+
+Vite + Tailwind build into `wwwroot/dist`. Install and build before `dotnet run` if you need styled pages:
+
+```bash
+npm install && npm run build
+```
+
+`dotnet build` / `dotnet run` compile the C# host without Node. `dotnet publish` runs `npm ci` / `npm run build` when `package.json` is present.

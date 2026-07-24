@@ -36,6 +36,10 @@ ScaffoldingReadMe.txt
 # NuGet Symbol Packages
 *.snupkg
 
+# Frontend (Vite + Tailwind)
+node_modules/
+wwwroot/dist/
+
 # Others
 ~$*
 *~

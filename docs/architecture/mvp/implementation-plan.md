@@ -73,7 +73,7 @@ Tracking issues:
 ### Exit criteria
 
 - No access/refresh JWT readable from browser JS.
-- BFF can call a protected Kithara probe (e.g. `/api/me` or equivalent) with stored tokens.
+- BFF can call a protected Kithara probe (`GET /api/auth/me` via `/bff/auth/me`) with stored tokens.
 
 ### Cross-repo
 

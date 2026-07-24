@@ -131,15 +131,18 @@ public static class BffEndpoints
             .ReadFromJsonAsync<RefreshResponseBody>(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        if (payload is null
-            || string.IsNullOrWhiteSpace(payload.AccessToken)
-            || string.IsNullOrWhiteSpace(payload.RefreshToken))
+        if (payload is null || string.IsNullOrWhiteSpace(payload.AccessToken))
         {
             return null;
         }
 
+        // Some providers omit refresh_token when it is not rotated; keep the prior value.
+        var refreshToken = string.IsNullOrWhiteSpace(payload.RefreshToken)
+            ? current.RefreshToken
+            : payload.RefreshToken;
+
         // Provider stays the same across refresh; never echo tokens to the browser.
-        return new SessionTokens(payload.AccessToken, payload.RefreshToken, current.ProviderId);
+        return new SessionTokens(payload.AccessToken, refreshToken, current.ProviderId);
     }
 
     private static async Task<HttpResponseMessage> SendUpstreamAsync(

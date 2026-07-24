@@ -18,7 +18,13 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
     /// <summary>When true, first <c>/api/auth/me</c> returns 401 so the BFF must refresh and retry.</summary>
     public bool RequireRefreshOnFirstAuthMe { get; set; }
 
+    /// <summary>When true, refresh JSON omits <c>refresh_token</c> (non-rotated providers).</summary>
+    public bool OmitRotatedRefreshToken { get; set; }
+
     public List<RecordedRequest> Requests { get; } = [];
+
+    /// <summary>Resets auth/me hit counting so refresh tests are not order-dependent.</summary>
+    public void ResetAuthMeHits() => _authMeHits = 0;
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
@@ -91,13 +97,16 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         }
 
         AccessToken = RotatedAccessToken;
-        RefreshToken = RotatedRefreshToken;
-
-        var body = JsonSerializer.Serialize(new
+        if (!OmitRotatedRefreshToken)
         {
-            access_token = RotatedAccessToken,
-            refresh_token = RotatedRefreshToken,
-        });
+            RefreshToken = RotatedRefreshToken;
+        }
+
+        object payload = OmitRotatedRefreshToken
+            ? new { access_token = RotatedAccessToken }
+            : new { access_token = RotatedAccessToken, refresh_token = RotatedRefreshToken };
+
+        var body = JsonSerializer.Serialize(payload);
 
         return new HttpResponseMessage(HttpStatusCode.OK)
         {

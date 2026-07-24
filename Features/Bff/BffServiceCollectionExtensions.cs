@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Options;
-
 namespace Plume.Features.Bff;
 
 public static class BffServiceCollectionExtensions
@@ -12,15 +10,8 @@ public static class BffServiceCollectionExtensions
         services.AddSingleton<ISessionTokenStore, MemorySessionTokenStore>();
         services.AddSingleton<IPlumeSessionService, PlumeSessionService>();
 
-        services.AddHttpClient(BffEndpoints.HttpClientName, (sp, client) =>
-        {
-            var baseUrl = sp.GetRequiredService<IOptions<KitharaOptions>>().Value.BaseUrl;
-            if (!string.IsNullOrWhiteSpace(baseUrl))
-            {
-                var normalized = baseUrl.TrimEnd('/') + "/";
-                client.BaseAddress = new Uri(normalized);
-            }
-        });
+        // Absolute upstream URLs are built per request; do not set BaseAddress.
+        services.AddHttpClient(BffEndpoints.HttpClientName);
 
         return services;
     }

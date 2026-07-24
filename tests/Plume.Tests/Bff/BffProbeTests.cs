@@ -16,7 +16,9 @@ public sealed class BffProbeTests : IClassFixture<PlumeWebApplicationFactory>
     {
         _factory = factory;
         _factory.Kithara.Requests.Clear();
+        _factory.Kithara.ResetAuthMeHits();
         _factory.Kithara.RequireRefreshOnFirstAuthMe = false;
+        _factory.Kithara.OmitRotatedRefreshToken = false;
         _factory.Kithara.AccessToken = "access-old";
         _factory.Kithara.RefreshToken = "refresh-old";
         _factory.Kithara.RotatedAccessToken = "access-new";
@@ -116,6 +118,32 @@ public sealed class BffProbeTests : IClassFixture<PlumeWebApplicationFactory>
         Assert.NotNull(stored);
         Assert.Equal("access-new", stored.AccessToken);
         Assert.Equal("refresh-new", stored.RefreshToken);
+        Assert.Equal("bes", stored.ProviderId);
+    }
+
+    [Fact]
+    public async Task AuthMe_on_upstream_401_keeps_prior_refresh_when_omitted()
+    {
+        _factory.Kithara.RequireRefreshOnFirstAuthMe = true;
+        _factory.Kithara.OmitRotatedRefreshToken = true;
+
+        var client = _factory.CreateClient();
+        var cookieHeader = await SeedSessionAsync(
+            client,
+            new SessionTokens("access-old", "refresh-old", "bes"));
+
+        using var response = await client.GetAsync("/bff/auth/me");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var sessions = _factory.Services.GetRequiredService<IPlumeSessionService>();
+        var http = new DefaultHttpContext();
+        http.Request.Headers.Cookie = cookieHeader;
+        var stored = await sessions.TryGetAsync(http);
+
+        Assert.NotNull(stored);
+        Assert.Equal("access-new", stored.AccessToken);
+        Assert.Equal("refresh-old", stored.RefreshToken);
         Assert.Equal("bes", stored.ProviderId);
     }
 

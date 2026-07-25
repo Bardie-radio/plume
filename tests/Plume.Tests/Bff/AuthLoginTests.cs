@@ -51,7 +51,8 @@ public sealed class AuthLoginTests
             HandleCookies = true,
         });
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await PostJsonWithCsrfAsync(
+            client,
             "/bff/auth/login",
             new
             {
@@ -101,7 +102,8 @@ public sealed class AuthLoginTests
             HandleCookies = true,
         });
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await PostJsonWithCsrfAsync(
+            client,
             "/bff/auth/login",
             new
             {
@@ -131,14 +133,16 @@ public sealed class AuthLoginTests
     [Fact]
     public async Task Proxy_does_not_expose_authenticate_or_refresh()
     {
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
         await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
         _factory.Kithara.Requests.Clear();
 
-        using var authenticate = await client.PostAsJsonAsync(
+        using var authenticate = await PostJsonWithCsrfAsync(
+            client,
             "/bff/auth/authenticate",
             new { provider_id = "bes", payload = new { username = "x" } });
-        using var refresh = await client.PostAsJsonAsync(
+        using var refresh = await PostJsonWithCsrfAsync(
+            client,
             "/bff/auth/refresh",
             new { provider_id = "bes", refresh_token = "refresh-old" });
 
@@ -161,10 +165,11 @@ public sealed class AuthLoginTests
     [Fact]
     public async Task Guest_exchange_establishes_session_without_tokens_in_body()
     {
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
         var strunaId = Guid.NewGuid();
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await PostJsonWithCsrfAsync(
+            client,
             $"/bff/streams/{strunaId}/guest/exchange",
             new { guest_code = "ABCD12" });
 
@@ -195,9 +200,10 @@ public sealed class AuthLoginTests
     [Fact]
     public async Task Guest_exchange_by_slug_establishes_session_without_tokens_in_body()
     {
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await PostJsonWithCsrfAsync(
+            client,
             "/bff/streams/by-slug/party/guest/exchange",
             new { guest_code = "ABCD12" });
 
@@ -216,16 +222,52 @@ public sealed class AuthLoginTests
     public async Task Guest_exchange_failure_returns_error_without_tokens_or_session()
     {
         _factory.Kithara.GuestExchangeSucceeds = false;
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
 
-        using var response = await client.PostAsJsonAsync(
+        using var response = await PostJsonWithCsrfAsync(
+            client,
             $"/bff/streams/{Guid.NewGuid()}/guest/exchange",
             new { guest_code = "WRONG" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("access_token", body, StringComparison.Ordinal);
-        Assert.False(response.Headers.Contains(HeaderNames.SetCookie));
+        Assert.DoesNotContain(
+            ParseSetCookies(response),
+            c => c.Name == "plume.sid");
+    }
+
+    [Fact]
+    public async Task Unsafe_bff_without_csrf_is_rejected()
+    {
+        var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/bff/auth/login",
+            new { provider_id = "bes", payload = new { username = "a", password = "b" } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("antiforgery_token_invalid", body, StringComparison.Ordinal);
+    }
+
+    private static async Task<HttpResponseMessage> PostJsonWithCsrfAsync(
+        HttpClient client,
+        string path,
+        object body)
+    {
+        using var csrfResponse = await client.GetAsync("/bff/auth/csrf");
+        csrfResponse.EnsureSuccessStatusCode();
+        var csrfJson = await csrfResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var token = csrfJson.GetProperty("token").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(token));
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = JsonContent.Create(body),
+        };
+        request.Headers.Add(BffAntiforgeryMiddleware.HeaderName, token);
+        return await client.SendAsync(request);
     }
 
     private async Task SeedSessionAsync(HttpClient client, SessionTokens tokens)

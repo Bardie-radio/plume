@@ -15,6 +15,7 @@
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <form method="post" action="/bff/auth/logout">
+                    @Html.AntiForgeryToken()
                     <button type="submit" class="underline underline-offset-2">Log out</button>
                 </form>
             }

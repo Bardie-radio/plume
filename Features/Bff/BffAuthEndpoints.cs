@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Plume.Features.Bff.Dtos;
 using Plume.Features.Bff.KitharaClients;
@@ -15,6 +16,7 @@ public static class BffAuthEndpoints
     public static RouteGroupBuilder MapBffAuthEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("/auth/discovery", DiscoveryAsync);
+        group.MapGet("/auth/csrf", CsrfAsync);
         group.MapPost("/auth/login", LoginAsync);
         group.MapPost("/auth/logout", LogoutAsync);
         group.MapPost("/auth/bindings/{provider}", UpdateBindingAsync);
@@ -123,6 +125,12 @@ public static class BffAuthEndpoints
         }
 
         return Results.Json(discovery);
+    }
+
+    private static IResult CsrfAsync(HttpContext http, IAntiforgery antiforgery)
+    {
+        var tokens = antiforgery.GetAndStoreTokens(http);
+        return Results.Json(new { token = tokens.RequestToken });
     }
 
     private static async Task<IResult> LoginAsync(

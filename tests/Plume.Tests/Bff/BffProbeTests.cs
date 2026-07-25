@@ -145,16 +145,31 @@ public sealed class BffProbeTests
     [Fact]
     public async Task Proxy_post_json_forwards_single_application_json_content_type()
     {
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
         await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
+
+        using var csrfResponse = await client.GetAsync("/bff/auth/csrf");
+        csrfResponse.EnsureSuccessStatusCode();
+        var csrfJson = await csrfResponse.Content.ReadAsStringAsync();
+        using var csrfDoc = System.Text.Json.JsonDocument.Parse(csrfJson);
+        var token = csrfDoc.RootElement.GetProperty("token").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(token));
 
         using var content = new StringContent(
             """{"search_result_id":"11111111-1111-1111-1111-111111111111"}""",
             System.Text.Encoding.UTF8,
             "application/json");
-        using var response = await client.PostAsync(
-            "/bff/streams/9507f88e-e5a9-4833-8b4a-025e18b3e80b/play",
-            content);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/bff/streams/9507f88e-e5a9-4833-8b4a-025e18b3e80b/play")
+        {
+            Content = content,
+        };
+        request.Headers.Add(BffAntiforgeryMiddleware.HeaderName, token);
+        using var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -167,6 +182,16 @@ public sealed class BffProbeTests
         Assert.StartsWith("application/json", play.ContentType, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(',', play.ContentType);
         Assert.Contains("search_result_id", play.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Responses_include_content_security_policy()
+    {
+        var client = _factory.CreateClient();
+        using var response = await client.GetAsync("/bff/auth/discovery");
+        Assert.True(response.Headers.Contains("Content-Security-Policy"));
+        var csp = string.Join(' ', response.Headers.GetValues("Content-Security-Policy"));
+        Assert.Contains("default-src 'self'", csp, StringComparison.Ordinal);
     }
 
     private async Task<string> SeedSessionAsync(HttpClient client, SessionTokens tokens)

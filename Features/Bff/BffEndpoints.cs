@@ -29,13 +29,23 @@ public static class BffEndpoints
     public static IEndpointRouteBuilder MapBffEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/bff");
-        group.MapMethods("{**path}", ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], ProxyAsync);
+
+        group.MapBffAuthEndpoints();
+
+        // Sole proxied auth path — remaining /auth/* is owned by MapBffAuthEndpoints.
+        group.MapMethods("/auth/me", ["GET", "HEAD"], ProxyAsync);
+
+        // Non-auth API mirror. Constraint prevents /auth/* from selecting this endpoint.
+        group.MapMethods(
+            "{**path:bffNonAuth}",
+            ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+            ProxyAsync);
+
         return endpoints;
     }
 
     private static async Task ProxyAsync(
         HttpContext http,
-        string? path,
         IPlumeSessionService sessions,
         IHttpClientFactory httpClientFactory,
         IOptions<KitharaOptions> kitharaOptions,
@@ -55,7 +65,7 @@ public static class BffEndpoints
             return;
         }
 
-        var apiPath = string.IsNullOrEmpty(path) ? string.Empty : path;
+        var apiPath = GetApiPath(http.Request.Path);
         var targetUri = $"{baseUrl}/api/{apiPath}{http.Request.QueryString.Value}";
 
         // Buffer once so we can retry after refresh without re-reading a consumed body.
@@ -104,6 +114,20 @@ public static class BffEndpoints
             cancellationToken).ConfigureAwait(false);
 
         await CopyResponseAsync(retry, http.Response, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Strip the <c>/bff</c> prefix so upstream is <c>/api/…</c>.</summary>
+    private static string GetApiPath(PathString requestPath)
+    {
+        var value = requestPath.Value ?? string.Empty;
+        if (value.StartsWith("/bff/", StringComparison.OrdinalIgnoreCase))
+        {
+            return value["/bff/".Length..].TrimStart('/');
+        }
+
+        return value.Equals("/bff", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : value.TrimStart('/');
     }
 
     private static async Task<SessionTokens?> TryRefreshAsync(

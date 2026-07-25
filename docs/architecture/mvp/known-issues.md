@@ -9,6 +9,7 @@ Non-security footguns and doc debt. Security / mesh / guest token semantics stay
 | **PLUME-ORG-001** | Mitigated in docs | Org `bardie-*` repo URLs fixed; [06-client-modules](https://github.com/Bardie-radio/.github/blob/main/profile/docs/architecture/06-client-modules.md) exists |
 | **PLUME-POLL-001** | Accepted MVP | Poll lag / multi-controller staleness — accepted until [kithara#28](https://github.com/Bardie-radio/kithara/issues/28) (not a Plume Phase) |
 | **PLUME-PATH-001** | Mitigated in docs | `/control` desk + `/player` listen remapped across Plume / kithara / org |
+| **PLUME-AUTH-001** | Open | BFF session auth scheme is a gate only (`IsAuthenticated` + `bardie_provider`) — does not map access-JWT claims onto `HttpContext.User` ([plume#8](https://github.com/Bardie-radio/plume/issues/8)) |
 
 GitHub tracking issues for Phases 1–6 are linked from [implementation-plan.md](implementation-plan.md).
 

@@ -1,0 +1,30 @@
+@page "/login"
+@model LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<section class="mx-auto max-w-md space-y-6 py-8">
+    <h1 class="text-2xl font-semibold tracking-tight">Sign in</h1>
+    <p class="text-sm text-neutral-600">Choose a sign-in method.</p>
+
+    @if (!string.IsNullOrEmpty(Model.DiscoveryError))
+    {
+        <p class="text-red-700" role="alert">@Model.DiscoveryError</p>
+    }
+    else
+    {
+        <ul class="space-y-3">
+            @foreach (var provider in Model.Providers)
+            {
+                var label = string.IsNullOrWhiteSpace(provider.DisplayName) ? provider.Id : provider.DisplayName;
+                <li>
+                    <a class="block w-full border border-neutral-800 bg-neutral-900 px-4 py-3 text-center text-sm text-white"
+                       href="/login/@Uri.EscapeDataString(provider.Id)">
+                        @label
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</section>

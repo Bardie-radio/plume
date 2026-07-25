@@ -6,11 +6,25 @@
     <title>@ViewData["Title"] - Plume</title>
     <link rel="stylesheet" href="~/dist/assets/main.css" asp-append-version="true" />
 </head>
-<body>
-    <header>
-        <p>Plume</p>
+<body class="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
+    <header class="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+        <p class="font-medium tracking-tight">
+            <a href="/">Plume</a>
+        </p>
+        <nav class="text-sm">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form method="post" action="/bff/auth/logout">
+                    <button type="submit" class="underline underline-offset-2">Log out</button>
+                </form>
+            }
+            else
+            {
+                <a class="underline underline-offset-2" href="/login">Log in</a>
+            }
+        </nav>
     </header>
-    <main>
+    <main class="px-4">
         @RenderBody()
     </main>
     <script type="module" src="~/dist/assets/main.js" asp-append-version="true"></script>

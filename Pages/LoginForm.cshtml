@@ -1,0 +1,54 @@
+@page "/login/{providerId}"
+@model LoginFormModel
+@{
+    var title = Model.Provider is null
+        ? "Sign in"
+        : (string.IsNullOrWhiteSpace(Model.Provider.DisplayName) ? Model.Provider.Id : Model.Provider.DisplayName);
+    ViewData["Title"] = title;
+}
+
+<section class="mx-auto max-w-md space-y-6 py-8">
+    <p class="text-sm">
+        <a class="underline underline-offset-2" href="/login">All sign-in methods</a>
+    </p>
+
+    <h1 class="text-2xl font-semibold tracking-tight">@title</h1>
+
+    @if (!string.IsNullOrEmpty(Model.LoadError))
+    {
+        <p class="text-red-700" role="alert">@Model.LoadError</p>
+    }
+    else if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <p class="text-red-700" role="alert">@Model.ErrorMessage</p>
+    }
+
+    @* Only form_schema reaches the view; redirect navigates to authorize_url in the page model. *@
+    @if (Model.Provider is { } provider
+         && string.Equals(provider.UiMode, LoginFormModel.FormSchemaMode, StringComparison.OrdinalIgnoreCase))
+    {
+        <form method="post" class="space-y-4">
+            <input type="hidden" asp-for="ProviderId" />
+
+            @foreach (var field in provider.FormFields)
+            {
+                var inputType = string.IsNullOrWhiteSpace(field.InputType) ? "text" : field.InputType;
+                var fieldId = $"field_{field.Name}";
+                    <div class="space-y-1">
+                        <label class="block text-sm" for="@fieldId">@field.Label</label>
+                        <input
+                            class="w-full border border-neutral-300 px-3 py-2"
+                            id="@fieldId"
+                            name="field_@field.Name"
+                            type="@inputType"
+                            required="@field.Required"
+                            autocomplete="@(string.Equals(inputType, "password", StringComparison.OrdinalIgnoreCase) ? "current-password" : "username")" />
+                    </div>
+            }
+
+            <button type="submit" class="border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-white">
+                Sign in
+            </button>
+        </form>
+    }
+</section>

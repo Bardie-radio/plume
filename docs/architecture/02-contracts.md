@@ -26,7 +26,8 @@ Never put access/refresh JWTs in `localStorage` or island JS.
 
 1. `GET /api/auth/discovery` (via BFF) → switch on live wire `ui_mode` (`login_form` \| `redirect`) and `login_form` / `bind_form` — never `if provider.id == "bes"`.
 2. `POST /api/auth/authenticate` (or redirect callback on **Kithara**) → Plume stores access + refresh **server-side**; sets session cookie. Browser sees success/error only.
-3. All control calls: BFF attaches Bearer user JWT (or guest control JWT after exchange).
+3. Binding update (`/account/credentials`): shown after login when `must_rotate_credentials`, and via header **Account** when discovery has `bind_form` (module advertised `updateBinding`). Edit `bind_form` → step-up `Authenticate` → POST bind fields only.
+4. All control calls: BFF attaches Bearer user JWT (or guest control JWT after exchange).
 
 Never call auth-adapter containers from the browser.
 

@@ -11,9 +11,10 @@
         <p class="font-medium tracking-tight">
             <a href="/">Plume</a>
         </p>
-        <nav class="text-sm">
+        <nav class="flex items-center gap-4 text-sm">
             @if (User.Identity?.IsAuthenticated == true)
             {
+                <a class="underline underline-offset-2" href="/account/credentials">Account</a>
                 <form method="post" action="/bff/auth/logout">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="underline underline-offset-2">Log out</button>

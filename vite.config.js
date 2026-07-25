@@ -14,6 +14,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(root, "assets/main.js"),
+        "credentials-reauth": resolve(root, "assets/credentials-reauth.js"),
       },
       output: {
         entryFileNames: "assets/[name].js",

@@ -218,16 +218,9 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
                         new
                         {
                             name = "password",
-                            label = "Current password",
+                            label = "Password",
                             input_type = "password",
                             required = true,
-                        },
-                        new
-                        {
-                            name = "new_password",
-                            label = "New password",
-                            input_type = "password",
-                            required = false,
                         },
                     },
                     authorize_url = (string?)null,

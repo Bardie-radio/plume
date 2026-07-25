@@ -1,10 +1,10 @@
-# Build from the parent folder that contains both `plume/` and `kithara/`
+# Build from the parent folder that contains `plume/` and `logos/`
 # (multi-root / Local Compose sibling layout → ProjectReference):
 #
 #   docker build -f plume/Dockerfile -t plume .
 #
-# Standalone Plume-only builds need published Bardie.* nupkgs on a NuGet feed
-# (PackageReference when ../kithara/libs is absent).
+# Standalone Plume-only builds need published Bardie.Logos.* nupkgs on a NuGet feed
+# (PackageReference when sibling Logos checkout is absent).
 #
 # Vite assets are built during `dotnet publish` (NpmBuild target in Plume.csproj).
 # META-OPS-002: Alpine final (busybox wget healthcheck — no curl).
@@ -21,10 +21,10 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 WORKDIR /src
 
-COPY kithara/Directory.Build.props kithara/Directory.Packages.props kithara/
-COPY kithara/libs/Bardie.Contracts kithara/libs/Bardie.Contracts/
-COPY kithara/libs/Bardie.Module.Channel kithara/libs/Bardie.Module.Channel/
-COPY kithara/libs/Bardie.Module.Hosting kithara/libs/Bardie.Module.Hosting/
+COPY logos/Directory.Build.props logos/Directory.Packages.props logos/
+COPY logos/src/Bardie.Logos.Contracts logos/src/Bardie.Logos.Contracts/
+COPY logos/src/Bardie.Logos.Channel logos/src/Bardie.Logos.Channel/
+COPY logos/src/Bardie.Logos.Hosting logos/src/Bardie.Logos.Hosting/
 
 COPY plume/Directory.Build.props plume/Directory.Packages.props plume/
 COPY plume/Plume.csproj plume/

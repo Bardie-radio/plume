@@ -21,6 +21,15 @@ public interface IKitharaUpstreamClient
         string apiPath,
         HttpContent? content = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// No Bearer — for unauthenticated open-playback reads (public/hidden by-slug).
+    /// Caller owns disposing the response. Never returns <c>null</c>.
+    /// </summary>
+    Task<HttpResponseMessage> SendUnauthenticatedAsync(
+        HttpMethod method,
+        string apiPath,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class KitharaUpstreamClient(
@@ -94,6 +103,26 @@ public sealed class KitharaUpstreamClient(
                 contentType,
                 cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    public async Task<HttpResponseMessage> SendUnauthenticatedAsync(
+        HttpMethod method,
+        string apiPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiPath);
+
+        var baseUrl = KitharaHttp.ResolveBaseUrl(kitharaOptions);
+        if (baseUrl is null)
+        {
+            return new HttpResponseMessage(HttpStatusCode.BadGateway);
+        }
+
+        var targetUri = $"{baseUrl}/api/{apiPath.TrimStart('/')}";
+        var client = httpClientFactory.CreateClient(KitharaHttp.HttpClientName);
+        using var request = new HttpRequestMessage(method, targetUri);
+        return await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<SessionTokens?> RefreshSessionExclusiveAsync(

@@ -7,12 +7,18 @@ const props = defineProps({
   strunaId: { type: String, default: "" },
   strunaSlug: { type: String, default: "" },
   streamUrl: { type: String, default: "" },
-  /** @type {"public" | "protected" | "private"} */
+  /** @type {"public" | "hidden" | "protected" | "private"} */
   playbackAccess: { type: String, default: "public" },
+  /** When true, poll unauthenticated by-slug now-playing (public | hidden). */
+  openPlayback: { type: Boolean, default: false },
 });
 
 const { artworkUrl, error: nowPlayingError, headline, status, title } = useNowPlaying(
   () => props.strunaId,
+  {
+    getSlug: () => props.strunaSlug,
+    openPlayback: () => props.openPlayback,
+  },
 );
 
 const enabled = ref(false);

@@ -19,7 +19,7 @@ The Identity + SQLite + Bootstrap scaffold shipped with the template is **throwa
 |-------|------|-----------------|
 | `/` | Home | Mostly Razor — list/create Strunas; auth entry |
 | `/control/{slug}` | **Remote control desk** | Queue (main), search, transport; compact now-playing secondary |
-| `/player/{slug}` | **Listen / player surface** | Composite listen island (prominent cover + auto-on audio) |
+| `/player/{slug}` | **Listen / player surface** | Composite listen island; anonymous for public/hidden |
 
 Do **not** merge player chrome into the control desk as the primary layout. Shared widgets mount on both where useful. There is **no** `/listen` path — ICY stays at `/stream/{slug}`.
 

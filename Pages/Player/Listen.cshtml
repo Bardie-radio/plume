@@ -1,5 +1,5 @@
 @page "/player/{slug}"
-@model Plume.Pages.Player.IndexModel
+@model Plume.Pages.Player.ListenModel
 @{
     ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? $"Player · {Model.Slug}" : $"Player · {Model.Title}";
     var strunaId = Model.StrunaId.ToString("D");
@@ -32,7 +32,8 @@
             StrunaId = strunaId,
             StrunaSlug = Model.Slug,
             StreamUrl = Model.StreamUrl,
-            PlaybackAccess = Model.PlaybackAccess
+            PlaybackAccess = Model.PlaybackAccess,
+            OpenPlayback = Model.OpenPlayback
         })" />
     }
 </section>

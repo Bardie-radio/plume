@@ -19,6 +19,14 @@ public interface IKitharaStreamsClient
         HttpContext http,
         CreateStrunaRequestBody body,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unauthenticated open-playback lookup (public | hidden). <see cref="OpenStrunaResult.Struna"/>
+    /// is null on 404 / non-open modes.
+    /// </summary>
+    Task<OpenStrunaResult> GetOpenBySlugAsync(
+        string slug,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -29,6 +37,12 @@ public sealed record StrunaListResult(
     bool Succeeded,
     bool Unauthorized,
     IReadOnlyList<StrunaSummary> Items,
+    string? Error,
+    HttpStatusCode? StatusCode);
+
+public sealed record OpenStrunaResult(
+    bool Succeeded,
+    StrunaSummary? Struna,
     string? Error,
     HttpStatusCode? StatusCode);
 
@@ -86,6 +100,43 @@ public sealed class KitharaStreamsClient(IKitharaUpstreamClient upstream) : IKit
             : payload.Error;
 
         return new CreateStrunaResult(false, null, error, response.StatusCode);
+    }
+
+    public async Task<OpenStrunaResult> GetOpenBySlugAsync(
+        string slug,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+
+        var path = "streams/by-slug/" + Uri.EscapeDataString(slug.Trim());
+        using var response = await upstream
+            .SendUnauthenticatedAsync(HttpMethod.Get, path, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return new OpenStrunaResult(false, null, null, response.StatusCode);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new OpenStrunaResult(
+                false,
+                null,
+                $"Kithara returned {(int)response.StatusCode} for /api/{path}.",
+                response.StatusCode);
+        }
+
+        var payload = await KitharaHttp
+            .TryReadJsonAsync<StrunaSummary>(response.Content, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (payload is null || payload.Id == Guid.Empty)
+        {
+            return new OpenStrunaResult(false, null, "Invalid open-playback payload.", response.StatusCode);
+        }
+
+        return new OpenStrunaResult(true, payload, null, response.StatusCode);
     }
 
     private async Task<StrunaListResult> ListAsync(

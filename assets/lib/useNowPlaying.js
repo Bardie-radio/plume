@@ -5,8 +5,9 @@ import { startPoll } from "./poll.js";
 /**
  * Shared now-playing poll for desk + listen islands.
  * @param {() => string} getStrunaId
+ * @param {{ getSlug?: () => string, openPlayback?: () => boolean }} [options]
  */
-export function useNowPlaying(getStrunaId) {
+export function useNowPlaying(getStrunaId, options = {}) {
   const playing = ref(false);
   const paused = ref(false);
   const title = ref("");
@@ -39,13 +40,23 @@ export function useNowPlaying(getStrunaId) {
 
   async function refresh() {
     const strunaId = getStrunaId();
-    if (!strunaId) {
+    const slug = options.getSlug?.() ?? "";
+    const open = Boolean(options.openPlayback?.());
+
+    if (open && slug) {
+      // Unauthenticated open-playback path — no session cookie required.
+    } else if (!strunaId) {
       error.value = "Missing Struna id.";
       return;
     }
 
+    const path =
+      open && slug
+        ? `/bff/streams/by-slug/${encodeURIComponent(slug)}/now-playing`
+        : `/bff/streams/${strunaId}/now-playing`;
+
     try {
-      const data = await bffGet(`/bff/streams/${strunaId}/now-playing`);
+      const data = await bffGet(path);
       playing.value = Boolean(data?.playing);
       paused.value = Boolean(data?.paused);
       title.value = data?.title ?? "";

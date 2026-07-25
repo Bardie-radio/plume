@@ -9,5 +9,6 @@ export function readIslandProps(el) {
     variant: el.dataset.variant || "compact",
     streamUrl: el.dataset.streamUrl || "",
     playbackAccess: el.dataset.playbackAccess || "public",
+    openPlayback: el.dataset.openPlayback === "true",
   };
 }

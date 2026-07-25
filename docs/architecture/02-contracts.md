@@ -8,7 +8,7 @@ Plume is a **REST client of Kithara via BFF**. Path map: [uri-routing](https://g
 |------|------|
 | `/` | List/create Strunas (auth required when Plume is used) |
 | `/control/{slug}` | Remote control desk — queue, search, transport |
-| `/player/{slug}` | Listen / player surface — prominent now-playing; audio off by default |
+| `/player/{slug}` | Listen / player surface — prominent now-playing; anonymous for **public** / **hidden**; audio off by default |
 
 Browser hits **Plume** for UI. `/api/*` and `/stream/*` stay on **Kithara** at the edge — Plume’s BFF calls `/api` server-side with Bearer tokens. There is **no** `/listen` UI path.
 
@@ -36,7 +36,7 @@ Short guest code is **exchange-only**: BFF `POST` → Kithara `POST /api/streams
 
 ## Playback control UI
 
-Wire to Kithara: play / quickplay, pause, skip, queue / quickqueue, quicksearch / search, delete, now-playing. **Poll** now-playing / queue for MVP. Browser audio **off by default**; optional listen via `/stream/{slug}` (listen token query when protected).
+Wire to Kithara: play / quickplay, pause, skip, queue / quickqueue, quicksearch / search, delete, now-playing. **Poll** now-playing / queue for MVP. Browser audio **off by default**; optional listen via `/stream/{slug}` (listen token query when protected). Public and **hidden** Strunas use unauthenticated `GET /bff/streams/by-slug/{slug}/now-playing` (Kithara open-playback); control and locked playback stay session-backed.
 
 ## Registration
 

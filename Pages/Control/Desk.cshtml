@@ -1,5 +1,5 @@
 @page "/control/{slug}"
-@model Plume.Pages.Control.IndexModel
+@model Plume.Pages.Control.DeskModel
 @{
     ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? $"Control · {Model.Slug}" : $"Control · {Model.Title}";
     var strunaId = Model.StrunaId.ToString("D");

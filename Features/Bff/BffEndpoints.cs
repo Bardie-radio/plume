@@ -48,6 +48,16 @@ public static class BffEndpoints
         // Sole proxied auth path — remaining /auth/* is owned by MapBffAuthEndpoints.
         group.MapMethods("/auth/me", ["GET", "HEAD"], ProxyAsync);
 
+        // Open playback (public | hidden): no session — mirrors Kithara by-slug reads.
+        group.MapMethods(
+            "/streams/by-slug/{slug}",
+            ["GET", "HEAD"],
+            ProxyOpenBySlugAsync);
+        group.MapMethods(
+            "/streams/by-slug/{slug}/now-playing",
+            ["GET", "HEAD"],
+            ProxyOpenBySlugNowPlayingAsync);
+
         // Non-auth API mirror. Constraint prevents /auth/* from selecting this endpoint.
         group.MapMethods(
             "{**path:bffNonAuth}",
@@ -55,6 +65,55 @@ public static class BffEndpoints
             ProxyAsync);
 
         return endpoints;
+    }
+
+    private static Task ProxyOpenBySlugAsync(
+        HttpContext http,
+        string slug,
+        IHttpClientFactory httpClientFactory,
+        IOptions<KitharaOptions> kitharaOptions,
+        CancellationToken cancellationToken) =>
+        ProxyUnauthenticatedAsync(
+            http,
+            httpClientFactory,
+            kitharaOptions,
+            $"streams/by-slug/{Uri.EscapeDataString(slug)}",
+            cancellationToken);
+
+    private static Task ProxyOpenBySlugNowPlayingAsync(
+        HttpContext http,
+        string slug,
+        IHttpClientFactory httpClientFactory,
+        IOptions<KitharaOptions> kitharaOptions,
+        CancellationToken cancellationToken) =>
+        ProxyUnauthenticatedAsync(
+            http,
+            httpClientFactory,
+            kitharaOptions,
+            $"streams/by-slug/{Uri.EscapeDataString(slug)}/now-playing",
+            cancellationToken);
+
+    private static async Task ProxyUnauthenticatedAsync(
+        HttpContext http,
+        IHttpClientFactory httpClientFactory,
+        IOptions<KitharaOptions> kitharaOptions,
+        string apiPath,
+        CancellationToken cancellationToken)
+    {
+        var baseUrl = KitharaHttp.ResolveBaseUrl(kitharaOptions);
+        if (baseUrl is null)
+        {
+            http.Response.StatusCode = StatusCodes.Status502BadGateway;
+            return;
+        }
+
+        var targetUri = $"{baseUrl}/api/{apiPath}{http.Request.QueryString.Value}";
+        var client = httpClientFactory.CreateClient(KitharaHttp.HttpClientName);
+        using var request = new HttpRequestMessage(new HttpMethod(http.Request.Method), targetUri);
+        using var upstream = await client
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+        await CopyResponseAsync(upstream, http.Response, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task ProxyAsync(

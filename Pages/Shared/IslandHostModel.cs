@@ -15,6 +15,9 @@ public sealed class IslandHostModel
     /// <summary>Optional; used by audio (Kithara <c>/stream/{slug}</c> URL, no listen token).</summary>
     public string? StreamUrl { get; init; }
 
-    /// <summary>Optional; <c>public</c> / <c>protected</c> / <c>private</c> for audio gate UX.</summary>
+    /// <summary>Optional; <c>public</c> / <c>hidden</c> / <c>protected</c> / <c>private</c> for audio gate UX.</summary>
     public string? PlaybackAccess { get; init; }
+
+    /// <summary>When true, listen island polls unauthenticated by-slug now-playing.</summary>
+    public bool OpenPlayback { get; init; }
 }

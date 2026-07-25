@@ -176,6 +176,7 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
         {
             "protected" => "protected",
             "private" => "private",
+            "hidden" => "hidden",
             _ => "public",
         };
 

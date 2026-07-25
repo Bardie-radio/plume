@@ -6,7 +6,7 @@ using Plume.Features.Bff.KitharaClients;
 namespace Plume.Pages.Control;
 
 [Authorize]
-public class IndexModel(IKitharaStreamsClient streams) : PageModel
+public class DeskModel(IKitharaStreamsClient streams) : PageModel
 {
     [BindProperty(SupportsGet = true)]
     public string Slug { get; set; } = string.Empty;

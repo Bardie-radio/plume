@@ -44,6 +44,18 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
     /// <summary>Resets auth/me hit counting so refresh tests are not order-dependent.</summary>
     public void ResetAuthMeHits() => _authMeHits = 0;
 
+    /// <summary>Open-playback by-slug responses (public | hidden). Null slug → 404.</summary>
+    public string? OpenBySlug { get; set; } = "party";
+
+    public string OpenPlaybackAccess { get; set; } = "public";
+
+    public Guid OpenStrunaId { get; set; } = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+    public string OpenTitle { get; set; } = "Party";
+
+    /// <summary>When true, by-slug now-playing returns a playing payload.</summary>
+    public bool OpenNowPlaying { get; set; }
+
     public void ResetAuthScenario()
     {
         Requests.Clear();
@@ -63,6 +75,11 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         MintedRefreshToken = "refresh-minted";
         AuthenticateError = "invalid credentials";
         ProviderId = "bes";
+        OpenBySlug = "party";
+        OpenPlaybackAccess = "public";
+        OpenStrunaId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        OpenTitle = "Party";
+        OpenNowPlaying = false;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -109,6 +126,12 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
             && path.StartsWith("/api/streams/", StringComparison.OrdinalIgnoreCase))
         {
             return HandleGuestExchange(body);
+        }
+
+        if (request.Method == HttpMethod.Get
+            && path.StartsWith("/api/streams/by-slug/", StringComparison.OrdinalIgnoreCase))
+        {
+            return HandleOpenBySlug(path);
         }
 
         // Catch-all JSON mutations (play / queue / …) — assert Content-Type in proxy tests.
@@ -323,6 +346,60 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    private HttpResponseMessage HandleOpenBySlug(string path)
+    {
+        // /api/streams/by-slug/{slug} or .../now-playing
+        const string prefix = "/api/streams/by-slug/";
+        var rest = path[prefix.Length..];
+        var slash = rest.IndexOf('/');
+        var slug = slash < 0 ? rest : rest[..slash];
+        var suffix = slash < 0 ? string.Empty : rest[slash..];
+
+        if (string.IsNullOrWhiteSpace(OpenBySlug)
+            || !string.Equals(slug, OpenBySlug, StringComparison.OrdinalIgnoreCase))
+        {
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = JsonContent("""{"error":"not_found"}"""),
+            };
+        }
+
+        if (suffix.Equals("/now-playing", StringComparison.OrdinalIgnoreCase))
+        {
+            var np = OpenNowPlaying
+                ? """{"playing":true,"paused":false,"title":"Never","artist":"Rick","stream_title":"Rick - Never"}"""
+                : """{"playing":false}""";
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent(np),
+            };
+        }
+
+        if (!string.IsNullOrEmpty(suffix))
+        {
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = new StringContent($"unexpected path: {path}"),
+            };
+        }
+
+        var meta = JsonSerializer.Serialize(new
+        {
+            id = OpenStrunaId,
+            slug = OpenBySlug,
+            title = OpenTitle,
+            playback_access = OpenPlaybackAccess,
+            control_access = "private",
+            owner_user_id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            created_at = DateTimeOffset.UtcNow,
+        });
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(meta, Encoding.UTF8, "application/json"),
         };
     }
 

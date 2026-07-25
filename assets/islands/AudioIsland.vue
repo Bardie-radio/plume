@@ -6,7 +6,7 @@ const props = defineProps({
   strunaSlug: { type: String, default: "" },
   /** Base stream URL without listen token (absolute or relative). */
   streamUrl: { type: String, default: "" },
-  /** @type {"public" | "protected" | "private"} */
+  /** @type {"public" | "hidden" | "protected" | "private"} */
   playbackAccess: { type: String, default: "public" },
 });
 

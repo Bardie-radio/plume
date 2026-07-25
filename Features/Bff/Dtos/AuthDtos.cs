@@ -101,6 +101,9 @@ public sealed class BindingUpdateResponseBody
     [JsonPropertyName("must_rotate_credentials")]
     public bool MustRotateCredentials { get; set; }
 
+    [JsonPropertyName("must_complete_binding")]
+    public bool MustCompleteBinding { get; set; }
+
     [JsonPropertyName("error")]
     public string? Error { get; set; }
 }
@@ -122,8 +125,92 @@ public sealed class BffLoginResponse
     [JsonPropertyName("must_rotate_credentials")]
     public bool MustRotateCredentials { get; set; }
 
+    [JsonPropertyName("must_complete_binding")]
+    public bool MustCompleteBinding { get; set; }
+
     [JsonPropertyName("error")]
     public string? Error { get; set; }
+}
+
+public sealed class RegisterRequestBody
+{
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+}
+
+public sealed class RegisterResponseBody
+{
+    [JsonPropertyName("user_id")]
+    public Guid UserId { get; set; }
+
+    [JsonPropertyName("username")]
+    public string? Username { get; set; }
+
+    [JsonPropertyName("registration_password")]
+    public string? RegistrationPassword { get; set; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+public sealed class ClaimRequestBody
+{
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+
+    [JsonPropertyName("registration_password")]
+    public string RegistrationPassword { get; set; } = string.Empty;
+}
+
+public sealed class ClaimResponseBody
+{
+    [JsonPropertyName("access_token")]
+    public string? AccessToken { get; set; }
+
+    [JsonPropertyName("refresh_token")]
+    public string? RefreshToken { get; set; }
+
+    [JsonPropertyName("provider_id")]
+    public string? ProviderId { get; set; }
+
+    [JsonPropertyName("must_complete_binding")]
+    public bool MustCompleteBinding { get; set; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+public sealed class BffRegisterRequest
+{
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+}
+
+public sealed class BffRegisterResponse
+{
+    [JsonPropertyName("ok")]
+    public bool Ok { get; set; }
+
+    [JsonPropertyName("user_id")]
+    public Guid? UserId { get; set; }
+
+    [JsonPropertyName("username")]
+    public string? Username { get; set; }
+
+    [JsonPropertyName("registration_password")]
+    public string? RegistrationPassword { get; set; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+public sealed class BffClaimRequest
+{
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+
+    [JsonPropertyName("registration_password")]
+    public string RegistrationPassword { get; set; } = string.Empty;
 }
 
 public sealed class BffGuestExchangeRequest

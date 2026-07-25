@@ -1,14 +1,14 @@
-@page "/account/credentials"
-@model Plume.Pages.Account.CredentialsModel
+@page "/claim/bind"
+@model Plume.Pages.Claim.BindModel
 @{
-    ViewData["Title"] = "Account";
+    ViewData["Title"] = "Link sign-in method";
 }
 
 <section class="mx-auto max-w-md space-y-6 py-8">
     <header class="space-y-1">
-        <h1 class="text-2xl font-semibold tracking-tight">Account</h1>
+        <h1 class="text-2xl font-semibold tracking-tight">Link sign-in method</h1>
         <p class="text-sm text-neutral-600">
-            Choose a sign-in method to update its binding data.
+            Choose how you will sign in after registration. Fill in the provider binding form on the next step.
         </p>
     </header>
 
@@ -24,7 +24,7 @@
                 var label = string.IsNullOrWhiteSpace(provider.DisplayName) ? provider.Id : provider.DisplayName;
                 <li>
                     <a class="block w-full border border-neutral-800 bg-neutral-900 px-4 py-3 text-center text-sm text-white"
-                       href="/account/credentials/@Uri.EscapeDataString(provider.Id)">
+                       href="/claim/bind/@Uri.EscapeDataString(provider.Id)">
                         @label
                     </a>
                 </li>

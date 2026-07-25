@@ -117,7 +117,7 @@ public class LoginFormModel(
             && provider.BindForm is { Count: > 0 })
         {
             return RedirectToPage(
-                "/Account/Credentials",
+                "/Account/CredentialsProvider",
                 new { providerId = ProviderId, ReturnUrl = LoginModel.SafeLocalRedirect(ReturnUrl) });
         }
 

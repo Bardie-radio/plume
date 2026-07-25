@@ -1,0 +1,56 @@
+@page "/account/invite"
+@model Plume.Pages.Account.InviteModel
+@{
+    ViewData["Title"] = "Invite user";
+}
+
+<section class="mx-auto max-w-md space-y-8 py-8">
+    <header class="space-y-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Invite user</h1>
+        <p class="text-sm text-neutral-600">
+            Create a new user and share the one-time registration password securely. Requires admin access on Kithara.
+        </p>
+    </header>
+
+    @if (Model.JustInvited is { } invited)
+    {
+        <aside class="space-y-3 border border-amber-300 bg-amber-50 px-4 py-3 text-sm" role="status">
+            <p class="font-medium">
+                Invited <span class="font-mono">@invited.Username</span> — copy the registration password now; it won’t be shown again.
+            </p>
+            <p>
+                <span class="text-neutral-600">Registration password</span>
+                <code class="ml-2 select-all font-mono">@invited.RegistrationPassword</code>
+            </p>
+            <p class="text-neutral-600">
+                They should open
+                <a class="underline underline-offset-2" href="/claim">Complete registration</a>
+                and enter this password with their username.
+            </p>
+        </aside>
+    }
+
+    <section class="space-y-4" aria-labelledby="invite-heading">
+        <h2 id="invite-heading" class="text-lg font-medium tracking-tight">New invite</h2>
+
+        @if (!string.IsNullOrEmpty(Model.CreateError))
+        {
+            <p class="text-red-700" role="alert">@Model.CreateError</p>
+        }
+
+        <form method="post" class="space-y-4">
+            <div class="space-y-1">
+                <label class="block text-sm" for="Username">Username</label>
+                <input
+                    class="w-full border border-neutral-300 px-3 py-2"
+                    asp-for="Username"
+                    required
+                    autocomplete="off" />
+            </div>
+
+            <button type="submit" class="border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-white">
+                Create invite
+            </button>
+        </form>
+    </section>
+</section>

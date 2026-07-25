@@ -10,6 +10,15 @@
         <p class="text-sm text-neutral-600">Choose a sign-in method, or join a protected Struna as a guest.</p>
     </header>
 
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <p class="border border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-800" role="status">@Model.SuccessMessage</p>
+    }
+
+    <p class="text-sm text-neutral-600">
+        <a class="underline underline-offset-2" href="/claim">Have an invite?</a>
+    </p>
+
     @if (!string.IsNullOrEmpty(Model.DiscoveryError))
     {
         <p class="text-red-700" role="alert">@Model.DiscoveryError</p>

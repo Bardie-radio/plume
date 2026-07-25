@@ -4,11 +4,11 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Plume.Features.Bff.Dtos;
 using Plume.Features.Bff.KitharaClients;
 
-namespace Plume.Pages.Account;
+namespace Plume.Pages.Claim;
 
-/// <summary>Pick a provider to edit binding data (discovery providers with <c>bind_form</c>).</summary>
+/// <summary>Pick a provider to bind after claim (discovery providers with bind_form).</summary>
 [Authorize]
-public class CredentialsModel(IKitharaAuthClient auth) : PageModel
+public class BindModel(IKitharaAuthClient auth) : PageModel
 {
     public IReadOnlyList<DiscoveryProvider> Providers { get; private set; } = [];
 
@@ -16,18 +16,10 @@ public class CredentialsModel(IKitharaAuthClient auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
-        if (string.Equals(
-                User.FindFirst("bardie_provider")?.Value,
-                KitharaAuthConstants.ClaimProviderId,
-                StringComparison.Ordinal))
-        {
-            return RedirectToPage("/Claim/Bind");
-        }
-
         var discovery = await auth.GetDiscoveryAsync(cancellationToken).ConfigureAwait(false);
         if (discovery?.Providers is null || discovery.Providers.Count == 0)
         {
-            LoadError = "Account options are unavailable. Try again later.";
+            LoadError = "Binding options are unavailable. Try again later.";
             Providers = [];
             return Page();
         }
@@ -38,7 +30,7 @@ public class CredentialsModel(IKitharaAuthClient auth) : PageModel
 
         if (Providers.Count == 0)
         {
-            LoadError = "No providers support account updates.";
+            LoadError = "No binding providers are available.";
         }
 
         return Page();

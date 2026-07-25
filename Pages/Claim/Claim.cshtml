@@ -1,0 +1,46 @@
+@page "/claim"
+@model Plume.Pages.Claim.ClaimModel
+@{
+    ViewData["Title"] = "Complete registration";
+}
+
+<section class="mx-auto max-w-md space-y-6 py-8">
+    <header class="space-y-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Complete registration</h1>
+        <p class="text-sm text-neutral-600">
+            Enter the username and one-time registration password from your invite.
+        </p>
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <p class="text-red-700" role="alert">@Model.ErrorMessage</p>
+    }
+
+    <form method="post" class="space-y-4">
+        <div class="space-y-1">
+            <label class="block text-sm" for="Username">Username</label>
+            <input
+                class="w-full border border-neutral-300 px-3 py-2"
+                asp-for="Username"
+                required
+                autocomplete="username" />
+        </div>
+        <div class="space-y-1">
+            <label class="block text-sm" for="RegistrationPassword">Registration password</label>
+            <input
+                class="w-full border border-neutral-300 px-3 py-2 font-mono text-sm"
+                asp-for="RegistrationPassword"
+                required
+                autocomplete="off" />
+        </div>
+        <button type="submit" class="border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-white">
+            Continue
+        </button>
+    </form>
+
+    <p class="text-sm text-neutral-600">
+        Already registered?
+        <a class="underline underline-offset-2" href="/login">Sign in</a>
+    </p>
+</section>

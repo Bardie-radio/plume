@@ -24,8 +24,8 @@ Never put access/refresh JWTs in `localStorage` or island JS.
 
 ## Auth flows
 
-1. `GET /api/auth/discovery` (via BFF) → switch on `ui` case: render `form_schema` fields or start `redirect` (never `if provider.id == "bes"`).
-2. `POST /api/auth/authenticate` or callback on **Kithara** → Plume stores access + refresh **server-side**; sets session cookie.
+1. `GET /api/auth/discovery` (via BFF) → switch on live wire `ui_mode` (`form_schema` \| `redirect`) and `form_fields` — never `if provider.id == "bes"`.
+2. `POST /api/auth/authenticate` (or redirect callback on **Kithara**) → Plume stores access + refresh **server-side**; sets session cookie. Browser sees success/error only.
 3. All control calls: BFF attaches Bearer user JWT (or guest control JWT after exchange).
 
 Never call auth-adapter containers from the browser.
@@ -40,6 +40,6 @@ Wire to Kithara: play / quickplay, pause, skip, queue / quickqueue, quicksearch 
 
 ## Registration
 
-Client module **Registers** with Kithara over gRPC (join secret + `user-aware`) — [clients](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/domains/clients.md) · [module registry](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/interfaces/grpc-module-registry.md). Day-to-day work is still REST as the logged-in user (via BFF).
+Client module **Registers** with Kithara over gRPC (join secret + `user-aware`) — [clients](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/domains/clients.md) · [module registry](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/interfaces/grpc-module-registry.md). Mesh membership is **Register + Heartbeat** only (idle work port; no client admin/work RPCs). Day-to-day UX is REST as the logged-in user (or guest) via BFF. OTel `service.name=bardie.plume`.
 
 **Read next:** [03-ui-stack.md](03-ui-stack.md)

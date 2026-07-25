@@ -5,12 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <!-- Sibling multi-root: ProjectReference when ../kithara/libs exists; else PackageReference. -->
-    <BardieLibsPath Condition="Exists('$(MSBuildThisFileDirectory)../kithara/libs')">$(MSBuildThisFileDirectory)../kithara/libs</BardieLibsPath>
-    <BardieContractsVersion>0.1.0</BardieContractsVersion>
-    <!-- Package: Bardie.Module.Channel -->
-    <BardieModuleChannelVersion>0.1.0</BardieModuleChannelVersion>
-    <!-- Package: Bardie.Module.Hosting -->
-    <BardieModuleHostingVersion>0.1.0</BardieModuleHostingVersion>
+    <!-- Sibling multi-root: ProjectReference when Logos checkout exists; else PackageReference. -->
+    <LogosPath Condition="Exists('$(MSBuildThisFileDirectory)../logos/src')">$(MSBuildThisFileDirectory)../logos/src</LogosPath>
+    <BardieLogosContractsVersion>0.1.0</BardieLogosContractsVersion>
+    <BardieLogosChannelVersion>0.1.0</BardieLogosChannelVersion>
+    <BardieLogosHostingVersion>0.1.0</BardieLogosHostingVersion>
   </PropertyGroup>
 </Project>

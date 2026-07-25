@@ -1,5 +1,5 @@
-using Bardie.Module.Channel.Participant;
-using Bardie.Module.Hosting;
+using Bardie.Logos.Channel.Participant;
+using Bardie.Logos.Hosting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using Plume.Features.Bff;

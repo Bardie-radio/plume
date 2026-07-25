@@ -6,7 +6,7 @@ using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Pages.Account;
 
-[Authorize]
+[Authorize(Roles = "admin")]
 public class InviteModel(IKitharaAuthClient auth) : PageModel
 {
     private const string TempInvitedUsername = "InvitedUsername";
@@ -21,22 +21,12 @@ public class InviteModel(IKitharaAuthClient auth) : PageModel
 
     public IActionResult OnGet()
     {
-        if (IsClaimSession())
-        {
-            return RedirectToPage("/Claim/Bind");
-        }
-
         ReadInvitedSecrets();
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
-        if (IsClaimSession())
-        {
-            return RedirectToPage("/Claim/Bind");
-        }
-
         var username = Username?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(username))
         {
@@ -80,12 +70,6 @@ public class InviteModel(IKitharaAuthClient auth) : PageModel
 
         JustInvited = new InvitedSecrets(username, password);
     }
-
-    private bool IsClaimSession() =>
-        string.Equals(
-            User.FindFirst("bardie_provider")?.Value,
-            KitharaAuthConstants.ClaimProviderId,
-            StringComparison.Ordinal);
 
     public sealed record InvitedSecrets(string Username, string RegistrationPassword);
 }

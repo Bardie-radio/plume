@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Features.Bff;
 
@@ -12,8 +13,8 @@ public static class PlumeSessionDefaults
 
 /// <summary>
 /// Maps a valid BFF session cookie to <see cref="ClaimsPrincipal"/>.
-/// Tokens stay in the server store — never in claims.
-/// PLUME-AUTH-001: gate only today (authenticated + provider id); real JWT claims are backlog.
+/// Access + refresh JWTs stay in the server store; claims are copied from the access token
+/// onto <see cref="HttpContext.User"/> for Razor authorization (PLUME-AUTH-001).
 /// </summary>
 public sealed class PlumeSessionAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -29,16 +30,37 @@ public sealed class PlumeSessionAuthenticationHandler(
             return AuthenticateResult.NoResult();
         }
 
-        // PLUME-AUTH-001 — do not invent roles/sub here; map access-token claims later.
+        var claims = new List<Claim>(AccessTokenClaims.ReadUnvalidated(tokens.AccessToken));
+
+        // Session store provider is authoritative for refresh routing (may disagree with stale JWT).
+        claims.RemoveAll(static c =>
+            string.Equals(c.Type, "bardie_provider", StringComparison.Ordinal));
+        claims.Add(new Claim("bardie_provider", tokens.ProviderId));
+
+        if (string.Equals(
+                tokens.ProviderId,
+                KitharaAuthConstants.ClaimProviderId,
+                StringComparison.Ordinal))
+        {
+            claims.RemoveAll(static c => c.Type == ClaimTypes.Role);
+            if (!claims.Exists(static c =>
+                    string.Equals(c.Type, ClaimInviteBindOnly, StringComparison.Ordinal)))
+            {
+                claims.Add(new Claim(ClaimInviteBindOnly, "true"));
+            }
+        }
+
         var identity = new ClaimsIdentity(
-            [
-                new Claim("bardie_provider", tokens.ProviderId),
-            ],
-            Scheme.Name);
+            claims,
+            Scheme.Name,
+            ClaimTypes.Name,
+            ClaimTypes.Role);
 
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
         return AuthenticateResult.Success(ticket);
     }
+
+    private const string ClaimInviteBindOnly = "bardie_bind_only";
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {

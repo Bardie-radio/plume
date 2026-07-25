@@ -11,13 +11,13 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
 {
     private int _authMeHits;
 
-    public string AccessToken { get; set; } = "access-old";
+    public string AccessToken { get; set; } = TestAccessJwt.CreateAdmin();
     public string RefreshToken { get; set; } = "refresh-old";
-    public string RotatedAccessToken { get; set; } = "access-new";
+    public string RotatedAccessToken { get; set; } = TestAccessJwt.CreateAdmin(subject: "user-1-rotated");
     public string RotatedRefreshToken { get; set; } = "refresh-new";
     public string ProviderId { get; set; } = "bes";
 
-    public string MintedAccessToken { get; set; } = "access-minted";
+    public string MintedAccessToken { get; set; } = TestAccessJwt.CreateAdmin();
     public string MintedRefreshToken { get; set; } = "refresh-minted";
 
     /// <summary>When false, <c>/api/auth/authenticate</c> returns 401 with an error body.</summary>
@@ -28,7 +28,9 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
 
     public string ExpectedGuestCode { get; set; } = "ABCD12";
 
-    public string GuestAccessToken { get; set; } = "access-guest";
+    public string GuestAccessToken { get; set; } = TestAccessJwt.Create(
+        subject: "guest-1",
+        providerId: "kithara.guest");
     public string GuestRefreshToken { get; set; } = "refresh-guest";
 
     public string AuthenticateError { get; set; } = "invalid credentials";
@@ -40,7 +42,7 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
 
     public string ExpectedClaimPassword { get; set; } = "REG-OTP";
 
-    public string ClaimAccessToken { get; set; } = "access-claim";
+    public string ClaimAccessToken { get; set; } = TestAccessJwt.CreateClaim();
     public string ClaimRefreshToken { get; set; } = "refresh-claim";
 
     /// <summary>When false, <c>/api/auth/register</c> returns 403.</summary>
@@ -80,19 +82,19 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         AuthenticateSucceeds = true;
         GuestExchangeSucceeds = true;
         ExpectedGuestCode = "ABCD12";
-        GuestAccessToken = "access-guest";
+        GuestAccessToken = TestAccessJwt.Create(subject: "guest-1", providerId: "kithara.guest");
         GuestRefreshToken = "refresh-guest";
-        AccessToken = "access-old";
+        AccessToken = TestAccessJwt.CreateAdmin();
         RefreshToken = "refresh-old";
-        RotatedAccessToken = "access-new";
+        RotatedAccessToken = TestAccessJwt.CreateAdmin(subject: "user-1-rotated");
         RotatedRefreshToken = "refresh-new";
-        MintedAccessToken = "access-minted";
+        MintedAccessToken = TestAccessJwt.CreateAdmin();
         MintedRefreshToken = "refresh-minted";
         AuthenticateError = "invalid credentials";
         ClaimSucceeds = true;
         ExpectedClaimUsername = "invitee";
         ExpectedClaimPassword = "REG-OTP";
-        ClaimAccessToken = "access-claim";
+        ClaimAccessToken = TestAccessJwt.CreateClaim();
         ClaimRefreshToken = "refresh-claim";
         RegisterSucceeds = true;
         MintedRegistrationPassword = "REG-NEW";

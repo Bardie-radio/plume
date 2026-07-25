@@ -6,6 +6,7 @@ Plume-specific session / XSS / guest UX notes. **Do not fork** Kithara `SEC-*` �
 
 - Session cookie name: **`plume.sid`** (override via `Session:CookieName`). Always **httpOnly**; `Secure` when the request is HTTPS; `SameSite` from `Session:SameSite` (default `Lax`) to match how the edge serves Plume vs `/api`.
 - Access + refresh JWTs live **only** in Plume’s server-side store — never in island JS, `localStorage`, query strings, or the cookie value.
+- **PLUME-AUTH-001:** on each request the session handler copies claims from the **access** JWT onto `HttpContext.User` (roles, `sub`, …) without re-verifying the signature (token was established via Kithara). Session `bardie_provider` stays authoritative for refresh routing. Claim sessions strip roles.
 - Bind tokens to the opaque session id. `EstablishAsync` issues a **new** session id and drops any prior cookie binding (anti-fixation). `ClearAsync` removes the store entry and expires the cookie.
 - Refresh: on upstream `401`, BFF calls Kithara `POST /api/auth/refresh` once, updates the store, and retries. If the refresh response omits `refresh_token`, keep the prior refresh token. Refresh failure clears the session.
 - Idle TTL: in-memory entries expire after `Session:IdleTimeout` of no access (sliding); see [operations.md](../operations.md).

@@ -28,13 +28,13 @@ public sealed class BffProbeTests
 
         await sessions.EstablishAsync(
             http,
-            new SessionTokens("access-old", "refresh-old", "bes"));
+            new SessionTokens(_factory.Kithara.AccessToken, _factory.Kithara.RefreshToken, "bes"));
 
         var setCookies = ParseSetCookies(http.Response.Headers);
         var sid = Assert.Single(setCookies, c => c.Name == "plume.sid");
         Assert.True(sid.HttpOnly);
         Assert.Equal(Microsoft.Net.Http.Headers.SameSiteMode.Lax, sid.SameSite);
-        Assert.DoesNotContain("access-old", sid.Value.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain(_factory.Kithara.AccessToken, sid.Value.Value, StringComparison.Ordinal);
         Assert.DoesNotContain("refresh-old", sid.Value.Value, StringComparison.Ordinal);
     }
 
@@ -42,7 +42,7 @@ public sealed class BffProbeTests
     public async Task AuthMe_probe_sends_bearer_and_keeps_tokens_out_of_set_cookie()
     {
         var client = _factory.CreateClient();
-        await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
+        await SeedSessionAsync(client, new SessionTokens(_factory.Kithara.AccessToken, _factory.Kithara.RefreshToken, "bes"));
 
         using var response = await client.GetAsync("/bff/auth/me");
 
@@ -53,9 +53,9 @@ public sealed class BffProbeTests
         var authMe = Assert.Single(
             _factory.Kithara.Requests,
             r => r.Method == "GET" && r.Path.Equals("/api/auth/me", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal("access-old", authMe.Bearer);
+        Assert.Equal(_factory.Kithara.AccessToken, authMe.Bearer);
 
-        AssertNoTokenLeakInSetCookie(response, "access-old", "refresh-old");
+        AssertNoTokenLeakInSetCookie(response, _factory.Kithara.AccessToken, _factory.Kithara.RefreshToken);
     }
 
     [Fact]
@@ -74,10 +74,15 @@ public sealed class BffProbeTests
     {
         _factory.Kithara.RequireRefreshOnFirstAuthMe = true;
 
+        var accessBefore = _factory.Kithara.AccessToken;
+        var refreshBefore = _factory.Kithara.RefreshToken;
+        var accessAfter = _factory.Kithara.RotatedAccessToken;
+        var refreshAfter = _factory.Kithara.RotatedRefreshToken;
+
         var client = _factory.CreateClient();
         var cookieHeader = await SeedSessionAsync(
             client,
-            new SessionTokens("access-old", "refresh-old", "bes"));
+            new SessionTokens(accessBefore, refreshBefore, "bes"));
 
         using var response = await client.GetAsync("/bff/auth/me");
 
@@ -89,7 +94,7 @@ public sealed class BffProbeTests
             {
                 Assert.Equal("GET", r.Method);
                 Assert.Equal("/api/auth/me", r.Path, ignoreCase: true);
-                Assert.Equal("access-old", r.Bearer);
+                Assert.Equal(accessBefore, r.Bearer);
             },
             r =>
             {
@@ -100,10 +105,10 @@ public sealed class BffProbeTests
             {
                 Assert.Equal("GET", r.Method);
                 Assert.Equal("/api/auth/me", r.Path, ignoreCase: true);
-                Assert.Equal("access-new", r.Bearer);
+                Assert.Equal(accessAfter, r.Bearer);
             });
 
-        AssertNoTokenLeakInSetCookie(response, "access-old", "refresh-old", "access-new", "refresh-new");
+        AssertNoTokenLeakInSetCookie(response, accessBefore, refreshBefore, accessAfter, refreshAfter);
 
         var sessions = _factory.Services.GetRequiredService<IPlumeSessionService>();
         var http = new DefaultHttpContext();
@@ -111,8 +116,8 @@ public sealed class BffProbeTests
         var stored = await sessions.TryGetAsync(http);
 
         Assert.NotNull(stored);
-        Assert.Equal("access-new", stored.AccessToken);
-        Assert.Equal("refresh-new", stored.RefreshToken);
+        Assert.Equal(accessAfter, stored.AccessToken);
+        Assert.Equal(refreshAfter, stored.RefreshToken);
         Assert.Equal("bes", stored.ProviderId);
     }
 
@@ -122,10 +127,14 @@ public sealed class BffProbeTests
         _factory.Kithara.RequireRefreshOnFirstAuthMe = true;
         _factory.Kithara.OmitRotatedRefreshToken = true;
 
+        var accessBefore = _factory.Kithara.AccessToken;
+        var refreshBefore = _factory.Kithara.RefreshToken;
+        var accessAfter = _factory.Kithara.RotatedAccessToken;
+
         var client = _factory.CreateClient();
         var cookieHeader = await SeedSessionAsync(
             client,
-            new SessionTokens("access-old", "refresh-old", "bes"));
+            new SessionTokens(accessBefore, refreshBefore, "bes"));
 
         using var response = await client.GetAsync("/bff/auth/me");
 
@@ -137,8 +146,8 @@ public sealed class BffProbeTests
         var stored = await sessions.TryGetAsync(http);
 
         Assert.NotNull(stored);
-        Assert.Equal("access-new", stored.AccessToken);
-        Assert.Equal("refresh-old", stored.RefreshToken);
+        Assert.Equal(accessAfter, stored.AccessToken);
+        Assert.Equal(refreshBefore, stored.RefreshToken);
         Assert.Equal("bes", stored.ProviderId);
     }
 
@@ -149,7 +158,7 @@ public sealed class BffProbeTests
         {
             HandleCookies = true,
         });
-        await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
+        await SeedSessionAsync(client, new SessionTokens(_factory.Kithara.AccessToken, _factory.Kithara.RefreshToken, "bes"));
 
         using var csrfResponse = await client.GetAsync("/bff/auth/csrf");
         csrfResponse.EnsureSuccessStatusCode();
@@ -177,7 +186,7 @@ public sealed class BffProbeTests
             _factory.Kithara.Requests,
             r => r.Method == "POST"
                 && r.Path.EndsWith("/play", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal("access-old", play.Bearer);
+        Assert.Equal(_factory.Kithara.AccessToken, play.Bearer);
         Assert.NotNull(play.ContentType);
         Assert.StartsWith("application/json", play.ContentType, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(',', play.ContentType);

@@ -55,14 +55,6 @@ public class CredentialsProviderModel(IKitharaAuthClient auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
-        if (string.Equals(
-                User.FindFirst("bardie_provider")?.Value,
-                KitharaAuthConstants.ClaimProviderId,
-                StringComparison.Ordinal))
-        {
-            return RedirectToPage("/Claim/Bind");
-        }
-
         if (string.IsNullOrWhiteSpace(ProviderId))
         {
             return RedirectToPage("/Account/Credentials");

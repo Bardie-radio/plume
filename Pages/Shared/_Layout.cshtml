@@ -33,7 +33,10 @@
             else if (User.Identity?.IsAuthenticated == true)
             {
                 <a class="underline underline-offset-2" href="/account/credentials">Account</a>
-                <a class="underline underline-offset-2" href="/account/invite">Invite user</a>
+                @if (User.IsInRole("admin"))
+                {
+                    <a class="underline underline-offset-2" href="/account/invite">Invite user</a>
+                }
                 <form method="post" action="/bff/auth/logout">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="underline underline-offset-2">Log out</button>

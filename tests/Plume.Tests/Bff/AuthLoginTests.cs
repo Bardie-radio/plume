@@ -70,15 +70,15 @@ public sealed class AuthLoginTests
         Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
         Assert.False(doc.RootElement.TryGetProperty("access_token", out _));
         Assert.False(doc.RootElement.TryGetProperty("refresh_token", out _));
-        Assert.DoesNotContain("access-minted", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("refresh-minted", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(_factory.Kithara.MintedAccessToken, body, StringComparison.Ordinal);
+        Assert.DoesNotContain(_factory.Kithara.MintedRefreshToken, body, StringComparison.Ordinal);
 
         var sid = Assert.Single(
             ParseSetCookies(response),
             c => c.Name == "plume.sid");
         Assert.True(sid.HttpOnly);
-        Assert.DoesNotContain("access-minted", sid.Value.Value, StringComparison.Ordinal);
-        Assert.DoesNotContain("refresh-minted", sid.Value.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain(_factory.Kithara.MintedAccessToken, sid.Value.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain(_factory.Kithara.MintedRefreshToken, sid.Value.Value, StringComparison.Ordinal);
 
         Assert.Contains(
             _factory.Kithara.Requests,
@@ -120,7 +120,7 @@ public sealed class AuthLoginTests
         Assert.Contains("invalid credentials", body, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", body, StringComparison.Ordinal);
         Assert.DoesNotContain("refresh_token", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("access-minted", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(_factory.Kithara.MintedAccessToken, body, StringComparison.Ordinal);
 
         Assert.DoesNotContain(
             ParseSetCookies(response),
@@ -134,7 +134,7 @@ public sealed class AuthLoginTests
     public async Task Proxy_does_not_expose_authenticate_or_refresh()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
-        await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
+        await SeedSessionAsync(client, new SessionTokens(_factory.Kithara.AccessToken, _factory.Kithara.RefreshToken, "bes"));
         _factory.Kithara.Requests.Clear();
 
         using var authenticate = await PostJsonWithCsrfAsync(
@@ -193,7 +193,7 @@ public sealed class AuthLoginTests
         http.Request.Headers.Cookie = $"{sid.Name}={sid.Value}";
         var stored = await sessions.TryGetAsync(http);
         Assert.NotNull(stored);
-        Assert.Equal("access-guest", stored.AccessToken);
+        Assert.Equal(_factory.Kithara.GuestAccessToken, stored.AccessToken);
         Assert.Equal("kithara.guest", stored.ProviderId);
     }
 

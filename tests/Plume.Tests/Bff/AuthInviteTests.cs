@@ -56,7 +56,7 @@ public sealed class AuthInviteTests
         var stored = await sessions.TryGetAsync(http);
         Assert.NotNull(stored);
         Assert.Equal(KitharaAuthConstants.ClaimProviderId, stored.ProviderId);
-        Assert.Equal("access-claim", stored.AccessToken);
+        Assert.Equal(_factory.Kithara.ClaimAccessToken, stored.AccessToken);
     }
 
     [Fact]

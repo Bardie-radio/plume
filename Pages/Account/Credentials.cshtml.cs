@@ -16,14 +16,6 @@ public class CredentialsModel(IKitharaAuthClient auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
-        if (string.Equals(
-                User.FindFirst("bardie_provider")?.Value,
-                KitharaAuthConstants.ClaimProviderId,
-                StringComparison.Ordinal))
-        {
-            return RedirectToPage("/Claim/Bind");
-        }
-
         var discovery = await auth.GetDiscoveryAsync(cancellationToken).ConfigureAwait(false);
         if (discovery?.Providers is null || discovery.Providers.Count == 0)
         {

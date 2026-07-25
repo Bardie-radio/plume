@@ -64,6 +64,7 @@ if (!string.IsNullOrWhiteSpace(httpsPort)
 app.UseRouting();
 app.UseMiddleware<ContentSecurityPolicyMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<ClaimBindRedirectMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<BffAntiforgeryMiddleware>();
 

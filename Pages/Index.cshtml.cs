@@ -40,22 +40,12 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
-        if (IsClaimSession())
-        {
-            return RedirectToPage("/Claim/Bind");
-        }
-
         ReadCreatedSecrets();
         return await LoadListsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
-        if (IsClaimSession())
-        {
-            return RedirectToPage("/Claim/Bind");
-        }
-
         var slug = Slug?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(slug))
         {
@@ -196,12 +186,6 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
             "protected" => "protected",
             _ => "private",
         };
-
-    private bool IsClaimSession() =>
-        string.Equals(
-            User.FindFirst("bardie_provider")?.Value,
-            KitharaAuthConstants.ClaimProviderId,
-            StringComparison.Ordinal);
 
     public sealed record HomeStrunaRow(
         Guid Id,

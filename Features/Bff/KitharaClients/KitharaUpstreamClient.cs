@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Options;
@@ -25,8 +26,12 @@ public interface IKitharaUpstreamClient
 public sealed class KitharaUpstreamClient(
     IHttpClientFactory httpClientFactory,
     IPlumeSessionService sessions,
-    IOptions<KitharaOptions> kitharaOptions) : IKitharaUpstreamClient
+    IOptions<KitharaOptions> kitharaOptions,
+    IOptions<SessionOptions> sessionOptions) : IKitharaUpstreamClient
 {
+    /// <summary>One refresh at a time per session — parallel list calls must not rotate thrash.</summary>
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> RefreshGates = new(StringComparer.Ordinal);
+
     public async Task<HttpResponseMessage?> SendAsync(
         HttpContext http,
         HttpMethod method,
@@ -73,12 +78,10 @@ public sealed class KitharaUpstreamClient(
 
         first.Dispose();
 
-        var refreshed = await KitharaHttp
-            .TryRefreshAsync(client, baseUrl, tokens, cancellationToken)
+        var refreshed = await RefreshSessionExclusiveAsync(http, client, baseUrl, tokens, cancellationToken)
             .ConfigureAwait(false);
-        if (refreshed is null || !sessions.TryUpdateTokens(http, refreshed))
+        if (refreshed is null)
         {
-            await sessions.ClearAsync(http, cancellationToken).ConfigureAwait(false);
             return null;
         }
 
@@ -91,6 +94,54 @@ public sealed class KitharaUpstreamClient(
                 contentType,
                 cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async Task<SessionTokens?> RefreshSessionExclusiveAsync(
+        HttpContext http,
+        HttpClient client,
+        string baseUrl,
+        SessionTokens observed,
+        CancellationToken cancellationToken)
+    {
+        var cookieName = sessionOptions.Value.CookieName;
+        if (!http.Request.Cookies.TryGetValue(cookieName, out var sessionId)
+            || string.IsNullOrWhiteSpace(sessionId))
+        {
+            await sessions.ClearAsync(http, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+
+        var gate = RefreshGates.GetOrAdd(sessionId, static _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // Another parallel caller may have already refreshed past the token we saw.
+            var latest = await sessions.TryGetAsync(http, cancellationToken).ConfigureAwait(false);
+            if (latest is null)
+            {
+                return null;
+            }
+
+            if (!string.Equals(latest.AccessToken, observed.AccessToken, StringComparison.Ordinal))
+            {
+                return latest;
+            }
+
+            var refreshed = await KitharaHttp
+                .TryRefreshAsync(client, baseUrl, latest, cancellationToken)
+                .ConfigureAwait(false);
+            if (refreshed is null || !sessions.TryUpdateTokens(http, refreshed))
+            {
+                await sessions.ClearAsync(http, cancellationToken).ConfigureAwait(false);
+                return null;
+            }
+
+            return refreshed;
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     private static async Task<HttpResponseMessage> SendOnceAsync(

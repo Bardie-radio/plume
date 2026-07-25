@@ -30,6 +30,8 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
 
     public IReadOnlyList<HomeStrunaRow> Strunas { get; private set; } = [];
 
+    public string? LoadError { get; private set; }
+
     public string? CreateError { get; private set; }
 
     /// <summary>One-shot secrets from the last create (TempData — gone after this render).</summary>
@@ -102,19 +104,26 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
         var listen = await listenTask.ConfigureAwait(false);
         var control = await controlTask.ConfigureAwait(false);
 
-        if (listen is null || control is null)
+        if (listen.Unauthorized || control.Unauthorized)
         {
             return Challenge();
         }
 
+        if (!listen.Succeeded || !control.Succeeded)
+        {
+            LoadError = listen.Error ?? control.Error ?? "Could not load Strunas from Kithara.";
+            Strunas = [];
+            return Page();
+        }
+
         var byId = new Dictionary<Guid, HomeStrunaRow>();
 
-        foreach (var s in listen)
+        foreach (var s in listen.Items)
         {
             byId[s.Id] = ToRow(s, canListen: true, canControl: false);
         }
 
-        foreach (var s in control)
+        foreach (var s in control.Items)
         {
             if (byId.TryGetValue(s.Id, out var existing))
             {

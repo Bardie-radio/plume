@@ -96,7 +96,11 @@
     <section class="space-y-4" aria-labelledby="list-heading">
         <h2 id="list-heading" class="text-lg font-medium tracking-tight">Listen &amp; control</h2>
 
-        @if (Model.Strunas.Count == 0)
+        @if (!string.IsNullOrEmpty(Model.LoadError))
+        {
+            <p class="text-red-700" role="alert">@Model.LoadError</p>
+        }
+        else if (Model.Strunas.Count == 0)
         {
             <p class="text-sm text-neutral-600">No Strunas yet. Create one above.</p>
         }

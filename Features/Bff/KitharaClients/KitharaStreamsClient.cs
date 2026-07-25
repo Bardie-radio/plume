@@ -7,11 +7,11 @@ namespace Plume.Features.Bff.KitharaClients;
 /// <summary>Server-side Struna list/create against Kithara (Razor home; islands use <c>/bff/*</c>).</summary>
 public interface IKitharaStreamsClient
 {
-    Task<IReadOnlyList<StrunaSummary>?> ListListenAsync(
+    Task<StrunaListResult> ListListenAsync(
         HttpContext http,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<StrunaSummary>?> ListControlAsync(
+    Task<StrunaListResult> ListControlAsync(
         HttpContext http,
         CancellationToken cancellationToken = default);
 
@@ -21,14 +21,25 @@ public interface IKitharaStreamsClient
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// <see cref="Unauthorized"/> means the Plume session is gone (Challenge).
+/// <see cref="Succeeded"/> false with a message is an upstream failure (do not treat as empty).
+/// </summary>
+public sealed record StrunaListResult(
+    bool Succeeded,
+    bool Unauthorized,
+    IReadOnlyList<StrunaSummary> Items,
+    string? Error,
+    HttpStatusCode? StatusCode);
+
 public sealed class KitharaStreamsClient(IKitharaUpstreamClient upstream) : IKitharaStreamsClient
 {
-    public Task<IReadOnlyList<StrunaSummary>?> ListListenAsync(
+    public Task<StrunaListResult> ListListenAsync(
         HttpContext http,
         CancellationToken cancellationToken = default) =>
         ListAsync(http, "streams/listen", cancellationToken);
 
-    public Task<IReadOnlyList<StrunaSummary>?> ListControlAsync(
+    public Task<StrunaListResult> ListControlAsync(
         HttpContext http,
         CancellationToken cancellationToken = default) =>
         ListAsync(http, "streams/control", cancellationToken);
@@ -77,7 +88,7 @@ public sealed class KitharaStreamsClient(IKitharaUpstreamClient upstream) : IKit
         return new CreateStrunaResult(false, null, error, response.StatusCode);
     }
 
-    private async Task<IReadOnlyList<StrunaSummary>?> ListAsync(
+    private async Task<StrunaListResult> ListAsync(
         HttpContext http,
         string apiPath,
         CancellationToken cancellationToken)
@@ -88,17 +99,28 @@ public sealed class KitharaStreamsClient(IKitharaUpstreamClient upstream) : IKit
 
         if (response is null)
         {
-            return null;
+            return new StrunaListResult(false, Unauthorized: true, [], null, HttpStatusCode.Unauthorized);
         }
 
         if (!response.IsSuccessStatusCode)
         {
-            return [];
+            return new StrunaListResult(
+                false,
+                Unauthorized: false,
+                [],
+                $"Kithara returned {(int)response.StatusCode} for /api/{apiPath}.",
+                response.StatusCode);
         }
 
         var payload = await KitharaHttp
             .TryReadJsonAsync<StrunaListResponse>(response.Content, cancellationToken)
             .ConfigureAwait(false);
-        return payload?.Strunas ?? [];
+
+        return new StrunaListResult(
+            true,
+            Unauthorized: false,
+            payload?.Strunas ?? [],
+            null,
+            response.StatusCode);
     }
 }

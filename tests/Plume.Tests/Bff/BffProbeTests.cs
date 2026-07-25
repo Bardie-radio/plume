@@ -142,6 +142,33 @@ public sealed class BffProbeTests
         Assert.Equal("bes", stored.ProviderId);
     }
 
+    [Fact]
+    public async Task Proxy_post_json_forwards_single_application_json_content_type()
+    {
+        var client = _factory.CreateClient();
+        await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
+
+        using var content = new StringContent(
+            """{"search_result_id":"11111111-1111-1111-1111-111111111111"}""",
+            System.Text.Encoding.UTF8,
+            "application/json");
+        using var response = await client.PostAsync(
+            "/bff/streams/9507f88e-e5a9-4833-8b4a-025e18b3e80b/play",
+            content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var play = Assert.Single(
+            _factory.Kithara.Requests,
+            r => r.Method == "POST"
+                && r.Path.EndsWith("/play", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("access-old", play.Bearer);
+        Assert.NotNull(play.ContentType);
+        Assert.StartsWith("application/json", play.ContentType, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(',', play.ContentType);
+        Assert.Contains("search_result_id", play.Body, StringComparison.Ordinal);
+    }
+
     private async Task<string> SeedSessionAsync(HttpClient client, SessionTokens tokens)
     {
         var sessions = _factory.Services.GetRequiredService<IPlumeSessionService>();

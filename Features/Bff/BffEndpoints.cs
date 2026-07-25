@@ -23,6 +23,22 @@ public static class BffEndpoints
         "Content-Length",
     };
 
+    /// <summary>
+    /// Managed on <see cref="HttpContent"/> when we buffer a body — do not copy from the
+    /// inbound request or Content-Type can be duplicated and upstream returns 415.
+    /// </summary>
+    private static readonly HashSet<string> ContentHeaders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Content-Type",
+        "Content-Encoding",
+        "Content-Language",
+        "Content-Location",
+        "Content-MD5",
+        "Content-Range",
+        "Expires",
+        "Last-Modified",
+    };
+
     public static IEndpointRouteBuilder MapBffEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/bff");
@@ -138,15 +154,16 @@ public static class BffEndpoints
         if (body is { Length: > 0 })
         {
             request.Content = new ByteArrayContent(body);
-            if (http.Request.ContentType is { } contentType)
-            {
-                request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
-            }
+            // Prefer the browser Content-Type; default JSON so Kithara [FromBody] never sees a bare body.
+            var mediaType = string.IsNullOrWhiteSpace(http.Request.ContentType)
+                ? "application/json"
+                : http.Request.ContentType;
+            request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(mediaType);
         }
 
         foreach (var header in http.Request.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key))
+            if (HopByHopHeaders.Contains(header.Key) || ContentHeaders.Contains(header.Key))
             {
                 continue;
             }

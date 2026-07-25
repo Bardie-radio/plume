@@ -53,42 +53,69 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         ProviderId = "bes";
     }
 
-    protected override Task<HttpResponseMessage> SendAsync(
+    protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
         var path = request.RequestUri?.AbsolutePath ?? string.Empty;
         var bearer = request.Headers.Authorization?.Parameter;
-        Requests.Add(new RecordedRequest(request.Method.Method, path, bearer));
+        var contentType = request.Content?.Headers.ContentType?.ToString();
+        string? body = null;
+        if (request.Content is not null)
+        {
+            body = await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        Requests.Add(new RecordedRequest(request.Method.Method, path, bearer, contentType, body));
 
         if (path.Equals("/api/auth/discovery", StringComparison.OrdinalIgnoreCase)
             && request.Method == HttpMethod.Get)
         {
-            return Task.FromResult(HandleDiscovery());
+            return HandleDiscovery();
         }
 
         if (path.Equals("/api/auth/authenticate", StringComparison.OrdinalIgnoreCase)
             && request.Method == HttpMethod.Post)
         {
-            return HandleAuthenticateAsync(request, cancellationToken);
+            return await HandleAuthenticateAsync(body).ConfigureAwait(false);
         }
 
         if (path.Equals("/api/auth/me", StringComparison.OrdinalIgnoreCase)
             && request.Method == HttpMethod.Get)
         {
-            return Task.FromResult(HandleAuthMe(bearer));
+            return HandleAuthMe(bearer);
         }
 
         if (path.Equals("/api/auth/refresh", StringComparison.OrdinalIgnoreCase)
             && request.Method == HttpMethod.Post)
         {
-            return HandleRefreshAsync(request, cancellationToken);
+            return await HandleRefreshAsync(body).ConfigureAwait(false);
         }
 
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+        // Catch-all JSON mutations (play / queue / …) — assert Content-Type in proxy tests.
+        if (request.Method == HttpMethod.Post
+            && path.StartsWith("/api/streams/", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(contentType)
+                || contentType.Contains(',', StringComparison.Ordinal)
+                || !contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.UnsupportedMediaType)
+                {
+                    Content = JsonContent("""{"error":"unsupported_media_type"}"""),
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent("""{"track_job_id":"00000000-0000-0000-0000-000000000001"}"""),
+            };
+        }
+
+        return new HttpResponseMessage(HttpStatusCode.NotFound)
         {
             Content = new StringContent($"unexpected path: {path}"),
-        });
+        };
     }
 
     private HttpResponseMessage HandleDiscovery()
@@ -131,37 +158,34 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         };
     }
 
-    private async Task<HttpResponseMessage> HandleAuthenticateAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
+    private Task<HttpResponseMessage> HandleAuthenticateAsync(string? json)
     {
-        if (request.Content is null)
+        if (string.IsNullOrWhiteSpace(json))
         {
-            return new HttpResponseMessage(HttpStatusCode.BadRequest)
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)
             {
                 Content = JsonContent("{\"error\":\"missing body\"}"),
-            };
+            });
         }
 
-        var json = await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         var providerId = root.TryGetProperty("provider_id", out var p) ? p.GetString() : null;
 
         if (!string.Equals(providerId, ProviderId, StringComparison.Ordinal))
         {
-            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
             {
                 Content = JsonContent("""{"error":"unknown provider"}"""),
-            };
+            });
         }
 
         if (!AuthenticateSucceeds)
         {
-            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
             {
                 Content = JsonContent($"{{\"error\":{JsonSerializer.Serialize(AuthenticateError)}}}"),
-            };
+            });
         }
 
         AccessToken = MintedAccessToken;
@@ -175,10 +199,10 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
             expires_in = 3600,
         });
 
-        return new HttpResponseMessage(HttpStatusCode.OK)
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
-        };
+        });
     }
 
     private HttpResponseMessage HandleAuthMe(string? bearer)
@@ -204,16 +228,13 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         };
     }
 
-    private async Task<HttpResponseMessage> HandleRefreshAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
+    private Task<HttpResponseMessage> HandleRefreshAsync(string? json)
     {
-        if (request.Content is null)
+        if (string.IsNullOrWhiteSpace(json))
         {
-            return new HttpResponseMessage(HttpStatusCode.BadRequest);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest));
         }
 
-        var json = await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         var providerId = root.TryGetProperty("provider_id", out var p) ? p.GetString() : null;
@@ -222,7 +243,7 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         if (!string.Equals(providerId, ProviderId, StringComparison.Ordinal)
             || !string.Equals(refreshToken, RefreshToken, StringComparison.Ordinal))
         {
-            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
         }
 
         AccessToken = RotatedAccessToken;
@@ -237,14 +258,19 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
 
         var body = JsonSerializer.Serialize(payload);
 
-        return new HttpResponseMessage(HttpStatusCode.OK)
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
-        };
+        });
     }
 
     private static StringContent JsonContent(string json) =>
         new(json, Encoding.UTF8, "application/json");
 
-    public sealed record RecordedRequest(string Method, string Path, string? Bearer);
+    public sealed record RecordedRequest(
+        string Method,
+        string Path,
+        string? Bearer,
+        string? ContentType = null,
+        string? Body = null);
 }

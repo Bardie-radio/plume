@@ -1,0 +1,39 @@
+@page "/player/{slug}"
+@model Plume.Pages.Player.ListenModel
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? $"Player · {Model.Slug}" : $"Player · {Model.Title}";
+    var strunaId = Model.StrunaId.ToString("D");
+}
+
+<section class="mx-auto max-w-2xl space-y-8 py-8">
+    <header class="space-y-1">
+        <p class="text-sm text-neutral-600">
+            <a class="underline underline-offset-2" href="/">Strunas</a>
+            @if (Model.CanControl)
+            {
+                <text>
+                    ·
+                    <a class="underline underline-offset-2" href="/control/@Uri.EscapeDataString(Model.Slug)">Control</a>
+                </text>
+            }
+        </p>
+        <h1 class="text-2xl font-semibold tracking-tight">@(!string.IsNullOrEmpty(Model.Title) ? Model.Title : Model.Slug)</h1>
+        <p class="font-mono text-xs text-neutral-500">/player/@Model.Slug · @Model.PlaybackAccess</p>
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.LoadError))
+    {
+        <p class="text-red-700" role="alert">@Model.LoadError</p>
+    }
+    else if (Model.StrunaId != Guid.Empty)
+    {
+        <partial name="_IslandHost" model="@(new IslandHostModel {
+            Island = "listen",
+            StrunaId = strunaId,
+            StrunaSlug = Model.Slug,
+            StreamUrl = Model.StreamUrl,
+            PlaybackAccess = Model.PlaybackAccess,
+            OpenPlayback = Model.OpenPlayback
+        })" />
+    }
+</section>

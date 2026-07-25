@@ -1,0 +1,36 @@
+@page "/control/{slug}"
+@model Plume.Pages.Control.DeskModel
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? $"Control · {Model.Slug}" : $"Control · {Model.Title}";
+    var strunaId = Model.StrunaId.ToString("D");
+}
+
+<section class="mx-auto max-w-5xl space-y-6 py-8">
+    <header class="space-y-1">
+        <p class="text-sm text-neutral-600">
+            <a class="underline underline-offset-2" href="/">Strunas</a>
+            ·
+            <a class="underline underline-offset-2" href="/player/@Uri.EscapeDataString(Model.Slug)">Player</a>
+        </p>
+        <h1 class="text-2xl font-semibold tracking-tight">@(!string.IsNullOrEmpty(Model.Title) ? Model.Title : Model.Slug)</h1>
+        <p class="font-mono text-xs text-neutral-500">/control/@Model.Slug</p>
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.LoadError))
+    {
+        <p class="text-red-700" role="alert">@Model.LoadError</p>
+    }
+    else if (Model.StrunaId != Guid.Empty)
+    {
+        <div class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <div class="space-y-4">
+                <partial name="_IslandHost" model="@(new IslandHostModel { Island = "queue", StrunaId = strunaId, StrunaSlug = Model.Slug })" />
+                <partial name="_IslandHost" model="@(new IslandHostModel { Island = "search", StrunaId = strunaId, StrunaSlug = Model.Slug })" />
+            </div>
+            <div class="space-y-4">
+                <partial name="_IslandHost" model="@(new IslandHostModel { Island = "now-playing", StrunaId = strunaId, StrunaSlug = Model.Slug, Variant = "compact" })" />
+                <partial name="_IslandHost" model="@(new IslandHostModel { Island = "transport", StrunaId = strunaId, StrunaSlug = Model.Slug })" />
+            </div>
+        </div>
+    }
+</section>

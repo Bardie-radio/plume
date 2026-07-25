@@ -1,0 +1,13 @@
+**/.git
+**/bin
+**/obj
+**/.vs
+**/.idea
+**/TestResults
+**/*.user
+**/node_modules
+**/wwwroot/dist
+**/tests
+**/docs
+**/.env
+**/*.md

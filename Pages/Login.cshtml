@@ -1,0 +1,72 @@
+@page "/login"
+@model LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<section class="mx-auto max-w-md space-y-8 py-8">
+    <header class="space-y-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Sign in</h1>
+        <p class="text-sm text-neutral-600">Choose a sign-in method, or join a protected Struna as a guest.</p>
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.DiscoveryError))
+    {
+        <p class="text-red-700" role="alert">@Model.DiscoveryError</p>
+    }
+    else if (Model.Providers.Count > 0)
+    {
+        <ul class="space-y-3">
+            @foreach (var provider in Model.Providers)
+            {
+                var label = string.IsNullOrWhiteSpace(provider.DisplayName) ? provider.Id : provider.DisplayName;
+                var href = string.IsNullOrWhiteSpace(Model.ReturnUrl)
+                    ? $"/login/{Uri.EscapeDataString(provider.Id)}"
+                    : $"/login/{Uri.EscapeDataString(provider.Id)}?ReturnUrl={Uri.EscapeDataString(Model.ReturnUrl)}";
+                <li>
+                    <a class="block w-full border border-neutral-800 bg-neutral-900 px-4 py-3 text-center text-sm text-white"
+                       href="@href">
+                        @label
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+
+    <div class="space-y-4 border-t border-neutral-200 pt-6">
+        <h2 class="text-sm font-medium tracking-tight">Or enter with a guest code</h2>
+        <p class="text-sm text-neutral-600">
+            Share the control link (<span class="font-mono text-xs">/control/…</span>) and the short code separately — never put the code in the URL.
+        </p>
+
+        @if (!string.IsNullOrEmpty(Model.GuestError))
+        {
+            <p class="text-red-700" role="alert">@Model.GuestError</p>
+        }
+
+        <form method="post" asp-page-handler="Guest" class="space-y-4">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <div class="space-y-1">
+                <label class="block text-sm" for="GuestSlug">Struna slug</label>
+                <input
+                    class="w-full border border-neutral-300 px-3 py-2 font-mono text-sm lowercase"
+                    asp-for="GuestSlug"
+                    required
+                    autocomplete="off"
+                    spellcheck="false" />
+            </div>
+            <div class="space-y-1">
+                <label class="block text-sm" for="GuestCode">Guest code</label>
+                <input
+                    class="w-full border border-neutral-300 px-3 py-2 font-mono text-sm uppercase"
+                    asp-for="GuestCode"
+                    required
+                    autocomplete="off"
+                    autofocus />
+            </div>
+            <button type="submit" class="w-full border border-neutral-800 bg-white px-4 py-2 text-sm text-neutral-900">
+                Join control
+            </button>
+        </form>
+    </div>
+</section>

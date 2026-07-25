@@ -19,7 +19,7 @@ The Identity + SQLite + Bootstrap scaffold shipped with the template is **throwa
 |-------|------|-----------------|
 | `/` | Home | Mostly Razor — list/create Strunas; auth entry |
 | `/control/{slug}` | **Remote control desk** | Queue (main), search, transport; compact now-playing secondary |
-| `/player/{slug}` | **Listen / player surface** | Prominent now-playing; optional in-browser audio (**off by default**) |
+| `/player/{slug}` | **Listen / player surface** | Composite listen island; anonymous for public/hidden |
 
 Do **not** merge player chrome into the control desk as the primary layout. Shared widgets mount on both where useful. There is **no** `/listen` path — ICY stays at `/stream/{slug}`.
 
@@ -27,11 +27,14 @@ Do **not** merge player chrome into the control desk as the primary layout. Shar
 
 | Widget | Control desk | Player surface |
 |--------|--------------|----------------|
-| **Now-playing** | Compact secondary | Prominent (YTM/Spotify-style) |
+| **Now-playing** | Compact: text + small cover right | — (folded into listen) |
+| **Listen** | — | One island: large cover, now-playing text, browser audio **on by default** (public) |
 | **Transport** | Primary (play/pause/skip) | Optional |
 | **Queue** | Primary | Optional / secondary |
 | **Search** | Primary | Optional |
-| **Audio** | — | Opt-in to `/stream/{slug}`; starts **off** |
+| **Audio** | — | Standalone still available; player page uses **listen** composite |
+
+`variant` on now-playing is **code-selected** (`compact` on control, `prominent` if mounted alone) — not an end-user toggle.
 
 Stay on Razor for discovery login, Struna create/list, and guest code entry unless a tiny widget proves necessary.
 

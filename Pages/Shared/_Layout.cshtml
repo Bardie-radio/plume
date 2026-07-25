@@ -6,13 +6,34 @@
     <title>@ViewData["Title"] - Plume</title>
     <link rel="stylesheet" href="~/dist/assets/main.css" asp-append-version="true" />
 </head>
-<body>
-    <header>
-        <p>Plume</p>
+<body class="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
+    <header class="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+        <p class="font-medium tracking-tight">
+            <a href="/">Plume</a>
+        </p>
+        <nav class="text-sm">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form method="post" action="/bff/auth/logout">
+                    <button type="submit" class="underline underline-offset-2">Log out</button>
+                </form>
+            }
+            else
+            {
+                <a class="underline underline-offset-2" href="/login">Log in</a>
+            }
+        </nav>
     </header>
-    <main>
+    <main class="px-4">
         @RenderBody()
     </main>
+    @*
+      Vue islands: mark host nodes with data-plume-island="<name>"
+      (now-playing | transport | queue | search | audio | listen) plus
+      data-struna-id / data-struna-slug (and optional data-variant / data-stream-url /
+      data-playback-access). now-playing variant is code-selected: compact (control) vs prominent.
+      main.js mounts them after the document is parsed.
+    *@
     <script type="module" src="~/dist/assets/main.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

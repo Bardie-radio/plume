@@ -1,0 +1,7 @@
+{
+  "slug": "plume",
+  "kind": "client",
+  "displayName": "Plume",
+  "otelServiceName": "bardie.plume",
+  "capabilities": []
+}

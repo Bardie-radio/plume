@@ -1,12 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Plume</RootNamespace>
+    <AssemblyName>Plume</AssemblyName>
     <UserSecretsId>aspnet-Plume-a4730ed9-8a6e-44b4-8c6f-b8cbdb55c498</UserSecretsId>
     <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <!-- Multi-root / Local Compose: sibling ProjectReference when ../kithara/libs exists. -->
+  <ItemGroup Condition="'$(BardieLibsPath)' != ''">
+    <ProjectReference Include="$(BardieLibsPath)/Bardie.Contracts/Bardie.Contracts.csproj" />
+    <ProjectReference Include="$(BardieLibsPath)/Bardie.Module.Channel/Bardie.Module.Channel.csproj" />
+    <ProjectReference Include="$(BardieLibsPath)/Bardie.Module.Hosting/Bardie.Module.Hosting.csproj" />
+  </ItemGroup>
+
+  <!-- Standalone CI / published nupkgs. -->
+  <ItemGroup Condition="'$(BardieLibsPath)' == ''">
+    <PackageReference Include="Bardie.Contracts" />
+    <PackageReference Include="Bardie.Module.Channel" />
+    <PackageReference Include="Bardie.Module.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="module.manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
 
   <!-- Optional: build frontend assets on `dotnet publish` when Node is available. -->
   <Target Name="NpmBuild" BeforeTargets="Publish" Condition="Exists('package.json')">

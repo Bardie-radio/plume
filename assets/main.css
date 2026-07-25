@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Vite only sees assets/ by default — scan Razor for utility classes. */
+@source "../Pages/**/*.cshtml";
+@source "../Features/**/*.{cshtml,js}";
+@source "./**/*.{js,css,vue}";

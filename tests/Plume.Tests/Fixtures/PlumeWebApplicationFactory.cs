@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Plume.Features.Bff;
+using Plume.Features.Bff.KitharaClients;
 
-namespace Plume.Tests.Bff;
+namespace Plume.Tests.Fixtures;
 
+/// <summary>Shared test host for Plume integration tests (not published with the app).</summary>
 public sealed class PlumeWebApplicationFactory : WebApplicationFactory<Program>
 {
     public FakeKitharaHandler Kithara { get; } = new();
@@ -15,12 +17,15 @@ public sealed class PlumeWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Kithara:BaseUrl", "http://kithara.test");
         builder.UseSetting("Session:CookieName", "plume.sid");
         builder.UseSetting("Session:SameSite", "Lax");
+        // Mesh Register needs a live Kithara gRPC — keep BFF tests offline.
+        builder.UseSetting("ModuleParticipant:EnableRegistration", "false");
+        builder.UseSetting("ModuleParticipant:TlsDataPath", Path.Combine(Path.GetTempPath(), "plume-test-mtls"));
         builder.UseEnvironment("Development");
 
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton(Kithara);
-            services.AddHttpClient(BffEndpoints.HttpClientName)
+            services.AddHttpClient(KitharaHttp.HttpClientName)
                 .ConfigurePrimaryHttpMessageHandler(sp =>
                     new NonDisposingHandler(sp.GetRequiredService<FakeKitharaHandler>()))
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan);

@@ -3,26 +3,21 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Net.Http.Headers;
 using Plume.Features.Bff;
+using Plume.Tests.Fixtures;
 using Xunit;
 using SetCookieHeaderValue = Microsoft.Net.Http.Headers.SetCookieHeaderValue;
 
 namespace Plume.Tests.Bff;
 
-public sealed class BffProbeTests : IClassFixture<PlumeWebApplicationFactory>
+[Collection("PlumeApp")]
+public sealed class BffProbeTests
 {
     private readonly PlumeWebApplicationFactory _factory;
 
     public BffProbeTests(PlumeWebApplicationFactory factory)
     {
         _factory = factory;
-        _factory.Kithara.Requests.Clear();
-        _factory.Kithara.ResetAuthMeHits();
-        _factory.Kithara.RequireRefreshOnFirstAuthMe = false;
-        _factory.Kithara.OmitRotatedRefreshToken = false;
-        _factory.Kithara.AccessToken = "access-old";
-        _factory.Kithara.RefreshToken = "refresh-old";
-        _factory.Kithara.RotatedAccessToken = "access-new";
-        _factory.Kithara.RotatedRefreshToken = "refresh-new";
+        _factory.Kithara.ResetAuthScenario();
     }
 
     [Fact]
@@ -145,6 +140,33 @@ public sealed class BffProbeTests : IClassFixture<PlumeWebApplicationFactory>
         Assert.Equal("access-new", stored.AccessToken);
         Assert.Equal("refresh-old", stored.RefreshToken);
         Assert.Equal("bes", stored.ProviderId);
+    }
+
+    [Fact]
+    public async Task Proxy_post_json_forwards_single_application_json_content_type()
+    {
+        var client = _factory.CreateClient();
+        await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
+
+        using var content = new StringContent(
+            """{"search_result_id":"11111111-1111-1111-1111-111111111111"}""",
+            System.Text.Encoding.UTF8,
+            "application/json");
+        using var response = await client.PostAsync(
+            "/bff/streams/9507f88e-e5a9-4833-8b4a-025e18b3e80b/play",
+            content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var play = Assert.Single(
+            _factory.Kithara.Requests,
+            r => r.Method == "POST"
+                && r.Path.EndsWith("/play", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("access-old", play.Bearer);
+        Assert.NotNull(play.ContentType);
+        Assert.StartsWith("application/json", play.ContentType, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(',', play.ContentType);
+        Assert.Contains("search_result_id", play.Body, StringComparison.Ordinal);
     }
 
     private async Task<string> SeedSessionAsync(HttpClient client, SessionTokens tokens)

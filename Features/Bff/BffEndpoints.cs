@@ -1,15 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Features.Bff;
 
 public static class BffEndpoints
 {
-    public const string HttpClientName = "KitharaApi";
-
     private static readonly HashSet<string> HopByHopHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
         "Connection",
@@ -26,16 +23,101 @@ public static class BffEndpoints
         "Content-Length",
     };
 
+    /// <summary>
+    /// Managed on <see cref="HttpContent"/> when we buffer a body — do not copy from the
+    /// inbound request or Content-Type can be duplicated and upstream returns 415.
+    /// </summary>
+    private static readonly HashSet<string> ContentHeaders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Content-Type",
+        "Content-Encoding",
+        "Content-Language",
+        "Content-Location",
+        "Content-MD5",
+        "Content-Range",
+        "Expires",
+        "Last-Modified",
+    };
+
     public static IEndpointRouteBuilder MapBffEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/bff");
-        group.MapMethods("{**path}", ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], ProxyAsync);
+
+        group.MapBffAuthEndpoints();
+
+        // Sole proxied auth path — remaining /auth/* is owned by MapBffAuthEndpoints.
+        group.MapMethods("/auth/me", ["GET", "HEAD"], ProxyAsync);
+
+        // Open playback (public | hidden): no session — mirrors Kithara by-slug reads.
+        group.MapMethods(
+            "/streams/by-slug/{slug}",
+            ["GET", "HEAD"],
+            ProxyOpenBySlugAsync);
+        group.MapMethods(
+            "/streams/by-slug/{slug}/now-playing",
+            ["GET", "HEAD"],
+            ProxyOpenBySlugNowPlayingAsync);
+
+        // Non-auth API mirror. Constraint prevents /auth/* from selecting this endpoint.
+        group.MapMethods(
+            "{**path:bffNonAuth}",
+            ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+            ProxyAsync);
+
         return endpoints;
+    }
+
+    private static Task ProxyOpenBySlugAsync(
+        HttpContext http,
+        string slug,
+        IHttpClientFactory httpClientFactory,
+        IOptions<KitharaOptions> kitharaOptions,
+        CancellationToken cancellationToken) =>
+        ProxyUnauthenticatedAsync(
+            http,
+            httpClientFactory,
+            kitharaOptions,
+            $"streams/by-slug/{Uri.EscapeDataString(slug)}",
+            cancellationToken);
+
+    private static Task ProxyOpenBySlugNowPlayingAsync(
+        HttpContext http,
+        string slug,
+        IHttpClientFactory httpClientFactory,
+        IOptions<KitharaOptions> kitharaOptions,
+        CancellationToken cancellationToken) =>
+        ProxyUnauthenticatedAsync(
+            http,
+            httpClientFactory,
+            kitharaOptions,
+            $"streams/by-slug/{Uri.EscapeDataString(slug)}/now-playing",
+            cancellationToken);
+
+    private static async Task ProxyUnauthenticatedAsync(
+        HttpContext http,
+        IHttpClientFactory httpClientFactory,
+        IOptions<KitharaOptions> kitharaOptions,
+        string apiPath,
+        CancellationToken cancellationToken)
+    {
+        var baseUrl = KitharaHttp.ResolveBaseUrl(kitharaOptions);
+        if (baseUrl is null)
+        {
+            http.Response.StatusCode = StatusCodes.Status502BadGateway;
+            return;
+        }
+
+        var targetUri = $"{baseUrl}/api/{apiPath}{http.Request.QueryString.Value}";
+        var client = httpClientFactory.CreateClient(KitharaHttp.HttpClientName);
+        using var request = new HttpRequestMessage(new HttpMethod(http.Request.Method), targetUri);
+        using var upstream = await client
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+        await CopyResponseAsync(upstream, http.Response, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task ProxyAsync(
         HttpContext http,
-        string? path,
         IPlumeSessionService sessions,
         IHttpClientFactory httpClientFactory,
         IOptions<KitharaOptions> kitharaOptions,
@@ -48,14 +130,14 @@ public static class BffEndpoints
             return;
         }
 
-        var baseUrl = kitharaOptions.Value.BaseUrl?.TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(baseUrl))
+        var baseUrl = KitharaHttp.ResolveBaseUrl(kitharaOptions);
+        if (baseUrl is null)
         {
             http.Response.StatusCode = StatusCodes.Status502BadGateway;
             return;
         }
 
-        var apiPath = string.IsNullOrEmpty(path) ? string.Empty : path;
+        var apiPath = GetApiPath(http.Request.Path);
         var targetUri = $"{baseUrl}/api/{apiPath}{http.Request.QueryString.Value}";
 
         // Buffer once so we can retry after refresh without re-reading a consumed body.
@@ -67,7 +149,7 @@ public static class BffEndpoints
             body = ms.ToArray();
         }
 
-        var client = httpClientFactory.CreateClient(HttpClientName);
+        var client = httpClientFactory.CreateClient(KitharaHttp.HttpClientName);
         using var first = await SendUpstreamAsync(
             client,
             http,
@@ -82,11 +164,9 @@ public static class BffEndpoints
             return;
         }
 
-        var refreshed = await TryRefreshAsync(
-            client,
-            baseUrl,
-            tokens,
-            cancellationToken).ConfigureAwait(false);
+        var refreshed = await KitharaHttp
+            .TryRefreshAsync(client, baseUrl, tokens, cancellationToken)
+            .ConfigureAwait(false);
 
         if (refreshed is null || !sessions.TryUpdateTokens(http, refreshed))
         {
@@ -106,43 +186,18 @@ public static class BffEndpoints
         await CopyResponseAsync(retry, http.Response, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<SessionTokens?> TryRefreshAsync(
-        HttpClient client,
-        string baseUrl,
-        SessionTokens current,
-        CancellationToken cancellationToken)
+    /// <summary>Strip the <c>/bff</c> prefix so upstream is <c>/api/…</c>.</summary>
+    private static string GetApiPath(PathString requestPath)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/auth/refresh")
+        var value = requestPath.Value ?? string.Empty;
+        if (value.StartsWith("/bff/", StringComparison.OrdinalIgnoreCase))
         {
-            Content = JsonContent.Create(new RefreshRequestBody
-            {
-                ProviderId = current.ProviderId,
-                RefreshToken = current.RefreshToken,
-            }),
-        };
-
-        using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
+            return value["/bff/".Length..].TrimStart('/');
         }
 
-        var payload = await response.Content
-            .ReadFromJsonAsync<RefreshResponseBody>(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
-        if (payload is null || string.IsNullOrWhiteSpace(payload.AccessToken))
-        {
-            return null;
-        }
-
-        // Some providers omit refresh_token when it is not rotated; keep the prior value.
-        var refreshToken = string.IsNullOrWhiteSpace(payload.RefreshToken)
-            ? current.RefreshToken
-            : payload.RefreshToken;
-
-        // Provider stays the same across refresh; never echo tokens to the browser.
-        return new SessionTokens(payload.AccessToken, refreshToken, current.ProviderId);
+        return value.Equals("/bff", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : value.TrimStart('/');
     }
 
     private static async Task<HttpResponseMessage> SendUpstreamAsync(
@@ -158,15 +213,16 @@ public static class BffEndpoints
         if (body is { Length: > 0 })
         {
             request.Content = new ByteArrayContent(body);
-            if (http.Request.ContentType is { } contentType)
-            {
-                request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
-            }
+            // Prefer the browser Content-Type; default JSON so Kithara [FromBody] never sees a bare body.
+            var mediaType = string.IsNullOrWhiteSpace(http.Request.ContentType)
+                ? "application/json"
+                : http.Request.ContentType;
+            request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(mediaType);
         }
 
         foreach (var header in http.Request.Headers)
         {
-            if (HopByHopHeaders.Contains(header.Key))
+            if (HopByHopHeaders.Contains(header.Key) || ContentHeaders.Contains(header.Key))
             {
                 continue;
             }
@@ -225,22 +281,4 @@ public static class BffEndpoints
         HttpMethods.IsPost(method)
         || HttpMethods.IsPut(method)
         || HttpMethods.IsPatch(method);
-
-    private sealed class RefreshRequestBody
-    {
-        [JsonPropertyName("provider_id")]
-        public string ProviderId { get; set; } = string.Empty;
-
-        [JsonPropertyName("refresh_token")]
-        public string RefreshToken { get; set; } = string.Empty;
-    }
-
-    private sealed class RefreshResponseBody
-    {
-        [JsonPropertyName("access_token")]
-        public string? AccessToken { get; set; }
-
-        [JsonPropertyName("refresh_token")]
-        public string? RefreshToken { get; set; }
-    }
 }

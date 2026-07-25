@@ -4,8 +4,9 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Plume.Features.Bff;
 
-namespace Plume.Tests.Bff;
+namespace Plume.Tests.Fixtures;
 
+/// <summary>Shared test host for Plume integration tests (not published with the app).</summary>
 public sealed class PlumeWebApplicationFactory : WebApplicationFactory<Program>
 {
     public FakeKitharaHandler Kithara { get; } = new();

@@ -3,26 +3,21 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Net.Http.Headers;
 using Plume.Features.Bff;
+using Plume.Tests.Fixtures;
 using Xunit;
 using SetCookieHeaderValue = Microsoft.Net.Http.Headers.SetCookieHeaderValue;
 
 namespace Plume.Tests.Bff;
 
-public sealed class BffProbeTests : IClassFixture<PlumeWebApplicationFactory>
+[Collection("PlumeApp")]
+public sealed class BffProbeTests
 {
     private readonly PlumeWebApplicationFactory _factory;
 
     public BffProbeTests(PlumeWebApplicationFactory factory)
     {
         _factory = factory;
-        _factory.Kithara.Requests.Clear();
-        _factory.Kithara.ResetAuthMeHits();
-        _factory.Kithara.RequireRefreshOnFirstAuthMe = false;
-        _factory.Kithara.OmitRotatedRefreshToken = false;
-        _factory.Kithara.AccessToken = "access-old";
-        _factory.Kithara.RefreshToken = "refresh-old";
-        _factory.Kithara.RotatedAccessToken = "access-new";
-        _factory.Kithara.RotatedRefreshToken = "refresh-new";
+        _factory.Kithara.ResetAuthScenario();
     }
 
     [Fact]

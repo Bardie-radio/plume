@@ -62,8 +62,11 @@ if (!string.IsNullOrWhiteSpace(httpsPort)
 }
 
 app.UseRouting();
+app.UseMiddleware<ContentSecurityPolicyMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<ClaimBindRedirectMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<BffAntiforgeryMiddleware>();
 
 // healthz only — MapModuleHostingEndpoints also maps `/`, which would steal the Razor home.
 app.MapGet("/healthz", () => Results.Ok(new { ok = true, slug = manifest.Slug }));

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Features.Bff;
@@ -18,6 +19,16 @@ public static class BffServiceCollectionExtensions
         services.AddSingleton<IKitharaGuestClient, KitharaGuestClient>();
         services.AddSingleton<IKitharaUpstreamClient, KitharaUpstreamClient>();
         services.AddSingleton<IKitharaStreamsClient, KitharaStreamsClient>();
+
+        // PLUME-SEC-002: antiforgery cookie + X-CSRF-TOKEN header on unsafe /bff methods.
+        services.AddAntiforgery(options =>
+        {
+            options.HeaderName = BffAntiforgeryMiddleware.HeaderName;
+            options.Cookie.Name = "plume.af";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        });
 
         services
             .AddAuthentication(PlumeSessionDefaults.AuthenticationScheme)

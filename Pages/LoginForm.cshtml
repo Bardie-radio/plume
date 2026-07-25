@@ -28,15 +28,15 @@
         <p class="text-red-700" role="alert">@Model.ErrorMessage</p>
     }
 
-    @* Only form_schema reaches the view; redirect navigates to authorize_url in the page model. *@
+    @* Only login_form reaches the view; redirect navigates to authorize_url in the page model. *@
     @if (Model.Provider is { } provider
-         && string.Equals(provider.UiMode, LoginFormModel.FormSchemaMode, StringComparison.OrdinalIgnoreCase))
+         && LoginFormModel.IsLoginFormMode(provider.UiMode))
     {
         <form method="post" class="space-y-4">
             <input type="hidden" asp-for="ProviderId" />
             <input type="hidden" asp-for="ReturnUrl" />
 
-            @foreach (var field in provider.FormFields)
+            @foreach (var field in provider.EffectiveLoginFields)
             {
                 var inputType = string.IsNullOrWhiteSpace(field.InputType) ? "text" : field.InputType;
                 var fieldId = $"field_{field.Name}";

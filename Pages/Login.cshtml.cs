@@ -23,6 +23,8 @@ public class LoginModel(
 
     public string? GuestError { get; private set; }
 
+    public string? SuccessMessage { get; private set; }
+
     /// <summary>Safe relative path to return to after sign-in / guest join (e.g. <c>/control/party</c>).</summary>
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
@@ -41,6 +43,7 @@ public class LoginModel(
         }
 
         PrefillGuestSlugFromReturnUrl();
+        SuccessMessage = TempData[Claim.BindProviderModel.RegistrationCompleteMessage] as string;
         await LoadDiscoveryAsync(cancellationToken).ConfigureAwait(false);
         return Page();
     }

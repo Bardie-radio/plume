@@ -9,17 +9,42 @@
 <body class="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
     <header class="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <p class="font-medium tracking-tight">
-            <a href="/">Plume</a>
+            <a href="@(User.Identity?.IsAuthenticated == true
+                && string.Equals(User.FindFirst("bardie_provider")?.Value, "kithara.claim", StringComparison.Ordinal)
+                ? "/claim/bind"
+                : "/")">Plume</a>
         </p>
-        <nav class="text-sm">
-            @if (User.Identity?.IsAuthenticated == true)
+        <nav class="flex items-center gap-4 text-sm">
+            @{
+                var isClaimSession = User.Identity?.IsAuthenticated == true
+                    && string.Equals(
+                        User.FindFirst("bardie_provider")?.Value,
+                        "kithara.claim",
+                        StringComparison.Ordinal);
+            }
+            @if (isClaimSession)
             {
+                <a class="underline underline-offset-2" href="/claim/bind">Finish registration</a>
                 <form method="post" action="/bff/auth/logout">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="underline underline-offset-2">Cancel</button>
+                </form>
+            }
+            else if (User.Identity?.IsAuthenticated == true)
+            {
+                <a class="underline underline-offset-2" href="/account/credentials">Account</a>
+                @if (User.IsInRole("admin"))
+                {
+                    <a class="underline underline-offset-2" href="/account/invite">Invite user</a>
+                }
+                <form method="post" action="/bff/auth/logout">
+                    @Html.AntiForgeryToken()
                     <button type="submit" class="underline underline-offset-2">Log out</button>
                 </form>
             }
             else
             {
+                <a class="underline underline-offset-2" href="/claim">Complete registration</a>
                 <a class="underline underline-offset-2" href="/login">Log in</a>
             }
         </nav>

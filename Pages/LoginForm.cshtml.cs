@@ -10,13 +10,15 @@ namespace Plume.Pages;
 
 /// <summary>
 /// Step 2 — discovery <c>ui_mode</c> drives the UI:
-/// <c>form_schema</c> → render fields; <c>redirect</c> → navigate to <c>authorize_url</c>.
+/// <c>login_form</c> → render fields; <c>redirect</c> → navigate to <c>authorize_url</c>.
 /// </summary>
 [AllowAnonymous]
 public class LoginFormModel(
     IKitharaAuthClient auth,
     IPlumeSessionService sessions) : PageModel
 {
+    public const string LoginFormMode = "login_form";
+    /// <summary>Legacy discovery value — treat as <see cref="LoginFormMode"/>.</summary>
     public const string FormSchemaMode = "form_schema";
     public const string RedirectMode = "redirect";
 
@@ -27,7 +29,7 @@ public class LoginFormModel(
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
 
-    /// <summary>Set only for <see cref="FormSchemaMode"/> (redirect returns before the view).</summary>
+    /// <summary>Set only for login form modes (redirect returns before the view).</summary>
     public DiscoveryProvider? Provider { get; private set; }
 
     public string? ErrorMessage { get; private set; }
@@ -79,7 +81,7 @@ public class LoginFormModel(
             return StartRedirect(provider);
         }
 
-        if (!string.Equals(provider.UiMode, FormSchemaMode, StringComparison.OrdinalIgnoreCase))
+        if (!IsLoginFormMode(provider.UiMode))
         {
             ErrorMessage = "This sign-in method is not supported yet.";
             return Page();
@@ -87,7 +89,7 @@ public class LoginFormModel(
 
         Provider = provider;
 
-        var payload = provider.FormFields
+        var payload = provider.EffectiveLoginFields
             .Where(static f => !string.IsNullOrWhiteSpace(f.Name))
             .ToDictionary(
                 static f => f.Name,
@@ -110,8 +112,21 @@ public class LoginFormModel(
         }
 
         await sessions.EstablishAsync(HttpContext, result.Tokens, cancellationToken).ConfigureAwait(false);
+
+        if (result.MustRotateCredentials
+            && provider.BindForm is { Count: > 0 })
+        {
+            return RedirectToPage(
+                "/Account/CredentialsProvider",
+                new { providerId = ProviderId, ReturnUrl = LoginModel.SafeLocalRedirect(ReturnUrl) });
+        }
+
         return Redirect(LoginModel.SafeLocalRedirect(ReturnUrl) ?? "/");
     }
+
+    internal static bool IsLoginFormMode(string? uiMode) =>
+        string.Equals(uiMode, LoginFormMode, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(uiMode, FormSchemaMode, StringComparison.OrdinalIgnoreCase);
 
     private IActionResult StartProviderUi(DiscoveryProvider provider)
     {
@@ -120,7 +135,7 @@ public class LoginFormModel(
             return StartRedirect(provider);
         }
 
-        if (string.Equals(provider.UiMode, FormSchemaMode, StringComparison.OrdinalIgnoreCase))
+        if (IsLoginFormMode(provider.UiMode))
         {
             Provider = provider;
             return Page();

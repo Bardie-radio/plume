@@ -11,13 +11,13 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
 {
     private int _authMeHits;
 
-    public string AccessToken { get; set; } = "access-old";
+    public string AccessToken { get; set; } = TestAccessJwt.CreateAdmin();
     public string RefreshToken { get; set; } = "refresh-old";
-    public string RotatedAccessToken { get; set; } = "access-new";
+    public string RotatedAccessToken { get; set; } = TestAccessJwt.CreateAdmin(subject: "user-1-rotated");
     public string RotatedRefreshToken { get; set; } = "refresh-new";
     public string ProviderId { get; set; } = "bes";
 
-    public string MintedAccessToken { get; set; } = "access-minted";
+    public string MintedAccessToken { get; set; } = TestAccessJwt.CreateAdmin();
     public string MintedRefreshToken { get; set; } = "refresh-minted";
 
     /// <summary>When false, <c>/api/auth/authenticate</c> returns 401 with an error body.</summary>
@@ -28,10 +28,27 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
 
     public string ExpectedGuestCode { get; set; } = "ABCD12";
 
-    public string GuestAccessToken { get; set; } = "access-guest";
+    public string GuestAccessToken { get; set; } = TestAccessJwt.Create(
+        subject: "guest-1",
+        providerId: "kithara.guest");
     public string GuestRefreshToken { get; set; } = "refresh-guest";
 
     public string AuthenticateError { get; set; } = "invalid credentials";
+
+    /// <summary>When false, <c>/api/auth/claim</c> returns 401.</summary>
+    public bool ClaimSucceeds { get; set; } = true;
+
+    public string ExpectedClaimUsername { get; set; } = "invitee";
+
+    public string ExpectedClaimPassword { get; set; } = "REG-OTP";
+
+    public string ClaimAccessToken { get; set; } = TestAccessJwt.CreateClaim();
+    public string ClaimRefreshToken { get; set; } = "refresh-claim";
+
+    /// <summary>When false, <c>/api/auth/register</c> returns 403.</summary>
+    public bool RegisterSucceeds { get; set; } = true;
+
+    public string MintedRegistrationPassword { get; set; } = "REG-NEW";
 
     /// <summary>When true, first <c>/api/auth/me</c> returns 401 so the BFF must refresh and retry.</summary>
     public bool RequireRefreshOnFirstAuthMe { get; set; }
@@ -65,15 +82,22 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         AuthenticateSucceeds = true;
         GuestExchangeSucceeds = true;
         ExpectedGuestCode = "ABCD12";
-        GuestAccessToken = "access-guest";
+        GuestAccessToken = TestAccessJwt.Create(subject: "guest-1", providerId: "kithara.guest");
         GuestRefreshToken = "refresh-guest";
-        AccessToken = "access-old";
+        AccessToken = TestAccessJwt.CreateAdmin();
         RefreshToken = "refresh-old";
-        RotatedAccessToken = "access-new";
+        RotatedAccessToken = TestAccessJwt.CreateAdmin(subject: "user-1-rotated");
         RotatedRefreshToken = "refresh-new";
-        MintedAccessToken = "access-minted";
+        MintedAccessToken = TestAccessJwt.CreateAdmin();
         MintedRefreshToken = "refresh-minted";
         AuthenticateError = "invalid credentials";
+        ClaimSucceeds = true;
+        ExpectedClaimUsername = "invitee";
+        ExpectedClaimPassword = "REG-OTP";
+        ClaimAccessToken = TestAccessJwt.CreateClaim();
+        ClaimRefreshToken = "refresh-claim";
+        RegisterSucceeds = true;
+        MintedRegistrationPassword = "REG-NEW";
         ProviderId = "bes";
         OpenBySlug = "party";
         OpenPlaybackAccess = "public";
@@ -107,6 +131,24 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
             && request.Method == HttpMethod.Post)
         {
             return await HandleAuthenticateAsync(body).ConfigureAwait(false);
+        }
+
+        if (path.Equals("/api/auth/register", StringComparison.OrdinalIgnoreCase)
+            && request.Method == HttpMethod.Post)
+        {
+            return HandleRegister(bearer, body);
+        }
+
+        if (path.Equals("/api/auth/claim", StringComparison.OrdinalIgnoreCase)
+            && request.Method == HttpMethod.Post)
+        {
+            return HandleClaim(body);
+        }
+
+        if (request.Method == HttpMethod.Post
+            && path.StartsWith("/api/auth/bindings/", StringComparison.OrdinalIgnoreCase))
+        {
+            return HandleBindingUpdate(bearer);
         }
 
         if (path.Equals("/api/auth/me", StringComparison.OrdinalIgnoreCase)
@@ -171,7 +213,24 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
                     id = ProviderId,
                     display_name = "Bes",
                     module = ProviderId,
-                    ui_mode = "form_schema",
+                    ui_mode = "login_form",
+                    login_form = new[]
+                    {
+                        new
+                        {
+                            name = "username",
+                            label = "Username",
+                            input_type = "text",
+                            required = true,
+                        },
+                        new
+                        {
+                            name = "password",
+                            label = "Password",
+                            input_type = "password",
+                            required = true,
+                        },
+                    },
                     form_fields = new[]
                     {
                         new
@@ -181,6 +240,16 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
                             input_type = "text",
                             required = true,
                         },
+                        new
+                        {
+                            name = "password",
+                            label = "Password",
+                            input_type = "password",
+                            required = true,
+                        },
+                    },
+                    bind_form = new[]
+                    {
                         new
                         {
                             name = "password",
@@ -245,6 +314,110 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         });
+    }
+
+    private HttpResponseMessage HandleRegister(string? bearer, string? json)
+    {
+        if (string.Equals(bearer, ClaimAccessToken, StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.Forbidden)
+            {
+                Content = JsonContent("""{"error":"must_complete_binding"}"""),
+            };
+        }
+
+        if (!RegisterSucceeds)
+        {
+            return new HttpResponseMessage(HttpStatusCode.Forbidden)
+            {
+                Content = JsonContent("""{"error":"admin_required"}"""),
+            };
+        }
+
+        if (!string.Equals(bearer, AccessToken, StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        }
+
+        string username = "newuser";
+        if (!string.IsNullOrWhiteSpace(json))
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("username", out var u))
+            {
+                username = u.GetString() ?? username;
+            }
+        }
+
+        var body = JsonSerializer.Serialize(new
+        {
+            user_id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            username,
+            registration_password = MintedRegistrationPassword,
+        });
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    private HttpResponseMessage HandleClaim(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = JsonContent("""{"error":"missing body"}"""),
+            };
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var username = root.TryGetProperty("username", out var u) ? u.GetString() : null;
+        var password = root.TryGetProperty("registration_password", out var p) ? p.GetString() : null;
+
+        if (!ClaimSucceeds
+            || !string.Equals(username, ExpectedClaimUsername, StringComparison.Ordinal)
+            || !string.Equals(password, ExpectedClaimPassword, StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Content = JsonContent("""{"error":"invalid_invite"}"""),
+            };
+        }
+
+        AccessToken = ClaimAccessToken;
+        RefreshToken = ClaimRefreshToken;
+        ProviderId = "kithara.claim";
+
+        var body = JsonSerializer.Serialize(new
+        {
+            access_token = ClaimAccessToken,
+            refresh_token = ClaimRefreshToken,
+            token_type = "Bearer",
+            expires_in = 3600,
+            provider_id = "kithara.claim",
+            must_complete_binding = true,
+        });
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    private HttpResponseMessage HandleBindingUpdate(string? bearer)
+    {
+        if (!string.Equals(bearer, AccessToken, StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        }
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent("""{"user_id":"33333333-3333-3333-3333-333333333333","must_rotate_credentials":false,"must_complete_binding":false}"""),
+        };
     }
 
     private HttpResponseMessage HandleAuthMe(string? bearer)

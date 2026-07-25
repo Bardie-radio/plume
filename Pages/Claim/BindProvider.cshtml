@@ -1,0 +1,56 @@
+@page "/claim/bind/{providerId}"
+@model Plume.Pages.Claim.BindProviderModel
+@{
+    var providerTitle = Model.ProviderDisplayName;
+    ViewData["Title"] = string.IsNullOrWhiteSpace(providerTitle)
+        ? "Complete binding"
+        : $"Link {providerTitle}";
+}
+
+<section class="mx-auto max-w-md space-y-6 py-8">
+    <p class="text-sm">
+        <a class="underline underline-offset-2" href="/claim/bind">All binding methods</a>
+    </p>
+
+    <h1 class="text-2xl font-semibold tracking-tight">@ViewData["Title"]</h1>
+    <p class="text-sm text-neutral-600">
+        Enter the credentials for this sign-in method. This completes your registration invite.
+    </p>
+
+    @if (!string.IsNullOrEmpty(Model.LoadError))
+    {
+        <p class="text-red-700" role="alert">@Model.LoadError</p>
+    }
+    else if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <p class="text-red-700" role="alert">@Model.ErrorMessage</p>
+    }
+
+    @if (Model.BindFields.Count > 0)
+    {
+        <form method="post" class="space-y-4">
+            <input type="hidden" asp-for="ProviderId" />
+
+            @foreach (var field in Model.BindFields)
+            {
+                var inputType = string.IsNullOrWhiteSpace(field.InputType) ? "text" : field.InputType;
+                var fieldId = $"field_{field.Name}";
+                var isSecret = string.Equals(inputType, "password", StringComparison.OrdinalIgnoreCase);
+                <div class="space-y-1">
+                    <label class="block text-sm" for="@fieldId">@field.Label</label>
+                    <input
+                        class="w-full border border-neutral-300 px-3 py-2"
+                        id="@fieldId"
+                        name="field_@field.Name"
+                        type="@inputType"
+                        required="@field.Required"
+                        autocomplete="@(isSecret ? "new-password" : "on")" />
+                </div>
+            }
+
+            <button type="submit" class="border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-white">
+                Complete registration
+            </button>
+        </form>
+    }
+</section>

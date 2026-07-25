@@ -1,5 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Plume.Features.Bff.Dtos;
+using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Features.Bff;
 

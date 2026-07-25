@@ -1,15 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Features.Bff;
 
 public static class BffEndpoints
 {
-    public const string HttpClientName = "KitharaApi";
-
     private static readonly HashSet<string> HopByHopHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
         "Connection",
@@ -58,8 +55,8 @@ public static class BffEndpoints
             return;
         }
 
-        var baseUrl = kitharaOptions.Value.BaseUrl?.TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(baseUrl))
+        var baseUrl = KitharaHttp.ResolveBaseUrl(kitharaOptions);
+        if (baseUrl is null)
         {
             http.Response.StatusCode = StatusCodes.Status502BadGateway;
             return;
@@ -77,7 +74,7 @@ public static class BffEndpoints
             body = ms.ToArray();
         }
 
-        var client = httpClientFactory.CreateClient(HttpClientName);
+        var client = httpClientFactory.CreateClient(KitharaHttp.HttpClientName);
         using var first = await SendUpstreamAsync(
             client,
             http,
@@ -92,11 +89,9 @@ public static class BffEndpoints
             return;
         }
 
-        var refreshed = await TryRefreshAsync(
-            client,
-            baseUrl,
-            tokens,
-            cancellationToken).ConfigureAwait(false);
+        var refreshed = await KitharaHttp
+            .TryRefreshAsync(client, baseUrl, tokens, cancellationToken)
+            .ConfigureAwait(false);
 
         if (refreshed is null || !sessions.TryUpdateTokens(http, refreshed))
         {
@@ -128,45 +123,6 @@ public static class BffEndpoints
         return value.Equals("/bff", StringComparison.OrdinalIgnoreCase)
             ? string.Empty
             : value.TrimStart('/');
-    }
-
-    private static async Task<SessionTokens?> TryRefreshAsync(
-        HttpClient client,
-        string baseUrl,
-        SessionTokens current,
-        CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/auth/refresh")
-        {
-            Content = JsonContent.Create(new RefreshRequestBody
-            {
-                ProviderId = current.ProviderId,
-                RefreshToken = current.RefreshToken,
-            }),
-        };
-
-        using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
-        }
-
-        var payload = await response.Content
-            .ReadFromJsonAsync<RefreshResponseBody>(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
-        if (payload is null || string.IsNullOrWhiteSpace(payload.AccessToken))
-        {
-            return null;
-        }
-
-        // Some providers omit refresh_token when it is not rotated; keep the prior value.
-        var refreshToken = string.IsNullOrWhiteSpace(payload.RefreshToken)
-            ? current.RefreshToken
-            : payload.RefreshToken;
-
-        // Provider stays the same across refresh; never echo tokens to the browser.
-        return new SessionTokens(payload.AccessToken, refreshToken, current.ProviderId);
     }
 
     private static async Task<HttpResponseMessage> SendUpstreamAsync(
@@ -249,22 +205,4 @@ public static class BffEndpoints
         HttpMethods.IsPost(method)
         || HttpMethods.IsPut(method)
         || HttpMethods.IsPatch(method);
-
-    private sealed class RefreshRequestBody
-    {
-        [JsonPropertyName("provider_id")]
-        public string ProviderId { get; set; } = string.Empty;
-
-        [JsonPropertyName("refresh_token")]
-        public string RefreshToken { get; set; } = string.Empty;
-    }
-
-    private sealed class RefreshResponseBody
-    {
-        [JsonPropertyName("access_token")]
-        public string? AccessToken { get; set; }
-
-        [JsonPropertyName("refresh_token")]
-        public string? RefreshToken { get; set; }
-    }
 }

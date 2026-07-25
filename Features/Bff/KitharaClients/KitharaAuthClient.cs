@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Plume.Features.Bff.Dtos;
 
-namespace Plume.Features.Bff;
+namespace Plume.Features.Bff.KitharaClients;
 
 /// <summary>Server-side calls to Kithara auth REST. Tokens never leave this layer toward the browser.</summary>
 public interface IKitharaAuthClient
@@ -28,13 +28,13 @@ public sealed class KitharaAuthClient(
 {
     public async Task<DiscoveryResponse?> GetDiscoveryAsync(CancellationToken cancellationToken = default)
     {
-        var baseUrl = GetBaseUrl();
+        var baseUrl = KitharaHttp.ResolveBaseUrl(kitharaOptions);
         if (baseUrl is null)
         {
             return null;
         }
 
-        var client = httpClientFactory.CreateClient(BffEndpoints.HttpClientName);
+        var client = httpClientFactory.CreateClient(KitharaHttp.HttpClientName);
         using var response = await client
             .GetAsync($"{baseUrl}/api/auth/discovery", cancellationToken)
             .ConfigureAwait(false);
@@ -44,16 +44,9 @@ public sealed class KitharaAuthClient(
             return null;
         }
 
-        try
-        {
-            return await response.Content
-                .ReadFromJsonAsync<DiscoveryResponse>(cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
+        return await KitharaHttp
+            .TryReadJsonAsync<DiscoveryResponse>(response.Content, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task<AuthLoginResult> AuthenticateAsync(
@@ -64,7 +57,7 @@ public sealed class KitharaAuthClient(
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
         ArgumentNullException.ThrowIfNull(payload);
 
-        var baseUrl = GetBaseUrl();
+        var baseUrl = KitharaHttp.ResolveBaseUrl(kitharaOptions);
         if (baseUrl is null)
         {
             return new AuthLoginResult(
@@ -74,7 +67,7 @@ public sealed class KitharaAuthClient(
                 HttpStatusCode.BadGateway);
         }
 
-        var client = httpClientFactory.CreateClient(BffEndpoints.HttpClientName);
+        var client = httpClientFactory.CreateClient(KitharaHttp.HttpClientName);
         using var response = await client
             .PostAsJsonAsync(
                 $"{baseUrl}/api/auth/authenticate",
@@ -86,17 +79,10 @@ public sealed class KitharaAuthClient(
                 cancellationToken)
             .ConfigureAwait(false);
 
-        AuthenticateResponseBody? body = null;
-        try
-        {
-            body = await response.Content
-                .ReadFromJsonAsync<AuthenticateResponseBody>(cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (JsonException)
-        {
-            // Non-JSON error bodies still become a safe browser-facing message below.
-        }
+        // Non-JSON error bodies still become a safe browser-facing message below.
+        var body = await KitharaHttp
+            .TryReadJsonAsync<AuthenticateResponseBody>(response.Content, cancellationToken)
+            .ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -123,11 +109,5 @@ public sealed class KitharaAuthClient(
             new SessionTokens(body.AccessToken, body.RefreshToken, providerId),
             null,
             HttpStatusCode.OK);
-    }
-
-    private string? GetBaseUrl()
-    {
-        var baseUrl = kitharaOptions.Value.BaseUrl?.TrimEnd('/');
-        return string.IsNullOrWhiteSpace(baseUrl) ? null : baseUrl;
     }
 }

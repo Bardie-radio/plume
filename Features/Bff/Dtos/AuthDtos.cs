@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Plume.Features.Bff;
+namespace Plume.Features.Bff.Dtos;
 
 /// <summary>Wire DTOs for Kithara discovery / authenticate (live JSON names, not proto oneof).</summary>
 public sealed class DiscoveryResponse

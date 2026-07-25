@@ -4,7 +4,127 @@
     ViewData["Title"] = "Home";
 }
 
-<section class="py-8">
-    <h1 class="text-2xl font-semibold tracking-tight">Home</h1>
-    <p class="mt-2 text-neutral-600">You are signed in. Struna list and create land in a later phase.</p>
+<section class="mx-auto max-w-2xl space-y-10 py-8">
+    <header class="space-y-1">
+        <h1 class="text-2xl font-semibold tracking-tight">Strunas</h1>
+        <p class="text-sm text-neutral-600">Create a stream, then open the control desk or listen surface.</p>
+    </header>
+
+    @if (Model.JustCreated is { } created)
+    {
+        <aside class="space-y-3 border border-amber-300 bg-amber-50 px-4 py-3 text-sm" role="status">
+            <p class="font-medium">Created <span class="font-mono">@created.Slug</span> — copy these now; they won’t be shown again.</p>
+            @if (!string.IsNullOrEmpty(created.GuestCode))
+            {
+                <p>
+                    <span class="text-neutral-600">Guest code</span>
+                    <code class="ml-2 select-all font-mono">@created.GuestCode</code>
+                </p>
+            }
+            @if (!string.IsNullOrEmpty(created.ListenToken))
+            {
+                <p>
+                    <span class="text-neutral-600">Listen token</span>
+                    <code class="ml-2 select-all break-all font-mono">@created.ListenToken</code>
+                </p>
+            }
+            @if (string.IsNullOrEmpty(created.GuestCode) && string.IsNullOrEmpty(created.ListenToken))
+            {
+                <p class="text-neutral-600">No one-time secrets for this access mode.</p>
+            }
+            <p class="text-neutral-600">
+                <a class="underline underline-offset-2" href="/control/@Uri.EscapeDataString(created.Slug)">Open control</a>
+                ·
+                <a class="underline underline-offset-2" href="/player/@Uri.EscapeDataString(created.Slug)">Open player</a>
+            </p>
+        </aside>
+    }
+
+    <section class="space-y-4" aria-labelledby="create-heading">
+        <h2 id="create-heading" class="text-lg font-medium tracking-tight">Create</h2>
+
+        @if (!string.IsNullOrEmpty(Model.CreateError))
+        {
+            <p class="text-red-700" role="alert">@Model.CreateError</p>
+        }
+
+        <form method="post" class="space-y-4">
+            <div class="space-y-1">
+                <label class="block text-sm" for="Slug">Slug</label>
+                <input
+                    class="w-full border border-neutral-300 px-3 py-2 font-mono text-sm"
+                    asp-for="Slug"
+                    required
+                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                    title="Lowercase letters, digits, and hyphens"
+                    autocomplete="off" />
+            </div>
+
+            <div class="space-y-1">
+                <label class="block text-sm" for="Title">Title <span class="text-neutral-500">(optional)</span></label>
+                <input
+                    class="w-full border border-neutral-300 px-3 py-2 text-sm"
+                    asp-for="Title"
+                    autocomplete="off" />
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                @* PLUME-CONTRACT-001 — option values are hand-copied Kithara wire names. *@
+                <div class="space-y-1">
+                    <label class="block text-sm" for="PlaybackAccess">Playback</label>
+                    <select class="w-full border border-neutral-300 px-3 py-2 text-sm" asp-for="PlaybackAccess">
+                        <option value="public">Public</option>
+                        <option value="protected">Protected (listen token)</option>
+                        <option value="private">Private</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-sm" for="ControlAccess">Control</label>
+                    <select class="w-full border border-neutral-300 px-3 py-2 text-sm" asp-for="ControlAccess">
+                        <option value="private">Private</option>
+                        <option value="protected">Protected (guest code)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm text-white">
+                Create Struna
+            </button>
+        </form>
+    </section>
+
+    <section class="space-y-4" aria-labelledby="list-heading">
+        <h2 id="list-heading" class="text-lg font-medium tracking-tight">Listen &amp; control</h2>
+
+        @if (Model.Strunas.Count == 0)
+        {
+            <p class="text-sm text-neutral-600">No Strunas yet. Create one above.</p>
+        }
+        else
+        {
+            <ul class="divide-y divide-neutral-200 border border-neutral-200">
+                @foreach (var row in Model.Strunas)
+                {
+                    <li class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                        data-struna-id="@row.Id.ToString("D")"
+                        data-struna-slug="@row.Slug">
+                        <div class="min-w-0">
+                            <p class="truncate font-medium">@row.Title</p>
+                            <p class="font-mono text-xs text-neutral-500">@row.Slug · @row.PlaybackAccess / @row.ControlAccess</p>
+                        </div>
+                        <div class="flex shrink-0 gap-3 text-sm">
+                            @if (row.CanControl)
+                            {
+                                <a class="underline underline-offset-2" href="/control/@Uri.EscapeDataString(row.Slug)">Control</a>
+                            }
+                            @if (row.CanListen || row.CanControl)
+                            {
+                                <a class="underline underline-offset-2" href="/player/@Uri.EscapeDataString(row.Slug)">Player</a>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
 </section>

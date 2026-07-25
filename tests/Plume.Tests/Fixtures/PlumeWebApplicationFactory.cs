@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Plume.Features.Bff;
+using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Tests.Fixtures;
 
@@ -21,7 +22,7 @@ public sealed class PlumeWebApplicationFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton(Kithara);
-            services.AddHttpClient(BffEndpoints.HttpClientName)
+            services.AddHttpClient(KitharaHttp.HttpClientName)
                 .ConfigurePrimaryHttpMessageHandler(sp =>
                     new NonDisposingHandler(sp.GetRequiredService<FakeKitharaHandler>()))
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan);

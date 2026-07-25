@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Plume.Features.Bff;
+using Plume.Features.Bff.Dtos;
+using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Pages;
 

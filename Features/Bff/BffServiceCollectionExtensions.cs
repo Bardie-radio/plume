@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
-using Plume.Features.Bff;
+using Plume.Features.Bff.KitharaClients;
 
 namespace Plume.Features.Bff;
 
@@ -15,6 +15,8 @@ public static class BffServiceCollectionExtensions
         services.AddSingleton<ISessionTokenStore, MemorySessionTokenStore>();
         services.AddSingleton<IPlumeSessionService, PlumeSessionService>();
         services.AddSingleton<IKitharaAuthClient, KitharaAuthClient>();
+        services.AddSingleton<IKitharaUpstreamClient, KitharaUpstreamClient>();
+        services.AddSingleton<IKitharaStreamsClient, KitharaStreamsClient>();
 
         services
             .AddAuthentication(PlumeSessionDefaults.AuthenticationScheme)
@@ -25,7 +27,7 @@ public static class BffServiceCollectionExtensions
         services.AddAuthorization();
 
         // Absolute upstream URLs are built per request; do not set BaseAddress.
-        services.AddHttpClient(BffEndpoints.HttpClientName);
+        services.AddHttpClient(KitharaHttp.HttpClientName);
 
         return services;
     }

@@ -15,6 +15,7 @@ public static class BffServiceCollectionExtensions
         services.AddSingleton<ISessionTokenStore, MemorySessionTokenStore>();
         services.AddSingleton<IPlumeSessionService, PlumeSessionService>();
         services.AddSingleton<IKitharaAuthClient, KitharaAuthClient>();
+        services.AddSingleton<IKitharaGuestClient, KitharaGuestClient>();
         services.AddSingleton<IKitharaUpstreamClient, KitharaUpstreamClient>();
         services.AddSingleton<IKitharaStreamsClient, KitharaStreamsClient>();
 

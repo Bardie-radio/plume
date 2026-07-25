@@ -17,6 +17,9 @@ public sealed class PlumeWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Kithara:BaseUrl", "http://kithara.test");
         builder.UseSetting("Session:CookieName", "plume.sid");
         builder.UseSetting("Session:SameSite", "Lax");
+        // Mesh Register needs a live Kithara gRPC — keep BFF tests offline.
+        builder.UseSetting("ModuleParticipant:EnableRegistration", "false");
+        builder.UseSetting("ModuleParticipant:TlsDataPath", Path.Combine(Path.GetTempPath(), "plume-test-mtls"));
         builder.UseEnvironment("Development");
 
         builder.ConfigureTestServices(services =>

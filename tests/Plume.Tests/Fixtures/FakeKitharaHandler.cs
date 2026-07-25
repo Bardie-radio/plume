@@ -23,6 +23,14 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
     /// <summary>When false, <c>/api/auth/authenticate</c> returns 401 with an error body.</summary>
     public bool AuthenticateSucceeds { get; set; } = true;
 
+    /// <summary>When false, guest exchange returns 401.</summary>
+    public bool GuestExchangeSucceeds { get; set; } = true;
+
+    public string ExpectedGuestCode { get; set; } = "ABCD12";
+
+    public string GuestAccessToken { get; set; } = "access-guest";
+    public string GuestRefreshToken { get; set; } = "refresh-guest";
+
     public string AuthenticateError { get; set; } = "invalid credentials";
 
     /// <summary>When true, first <c>/api/auth/me</c> returns 401 so the BFF must refresh and retry.</summary>
@@ -43,6 +51,10 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         RequireRefreshOnFirstAuthMe = false;
         OmitRotatedRefreshToken = false;
         AuthenticateSucceeds = true;
+        GuestExchangeSucceeds = true;
+        ExpectedGuestCode = "ABCD12";
+        GuestAccessToken = "access-guest";
+        GuestRefreshToken = "refresh-guest";
         AccessToken = "access-old";
         RefreshToken = "refresh-old";
         RotatedAccessToken = "access-new";
@@ -90,6 +102,13 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
             && request.Method == HttpMethod.Post)
         {
             return await HandleRefreshAsync(body).ConfigureAwait(false);
+        }
+
+        if (request.Method == HttpMethod.Post
+            && path.Contains("/guest/exchange", StringComparison.OrdinalIgnoreCase)
+            && path.StartsWith("/api/streams/", StringComparison.OrdinalIgnoreCase))
+        {
+            return HandleGuestExchange(body);
         }
 
         // Catch-all JSON mutations (play / queue / …) — assert Content-Type in proxy tests.
@@ -262,6 +281,49 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         });
+    }
+
+    private HttpResponseMessage HandleGuestExchange(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = JsonContent("""{"error":"guest_code is required."}"""),
+            };
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var code = doc.RootElement.TryGetProperty("guest_code", out var c)
+            ? c.GetString()
+            : doc.RootElement.TryGetProperty("code", out var c2) ? c2.GetString() : null;
+
+        if (!GuestExchangeSucceeds
+            || !string.Equals(code, ExpectedGuestCode, StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Content = JsonContent("""{"error":"invalid_guest_code"}"""),
+            };
+        }
+
+        AccessToken = GuestAccessToken;
+        RefreshToken = GuestRefreshToken;
+        ProviderId = "kithara.guest";
+
+        var body = JsonSerializer.Serialize(new
+        {
+            access_token = GuestAccessToken,
+            refresh_token = GuestRefreshToken,
+            token_type = "Bearer",
+            expires_in = 3600,
+            user_id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+        });
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
     }
 
     private static StringContent JsonContent(string json) =>

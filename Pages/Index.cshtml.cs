@@ -14,6 +14,7 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
     private const string TempListenToken = "CreatedListenToken";
     private const string TempCreatedSlug = "CreatedSlug";
     private const string TempCreatedTitle = "CreatedTitle";
+    private const string TempCreatedId = "CreatedId";
 
     [BindProperty]
     public string Slug { get; set; } = string.Empty;
@@ -82,6 +83,7 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
         // Reveal guest_code / listen_token once — never store them in the session.
         TempData[TempCreatedSlug] = result.Created.Slug;
         TempData[TempCreatedTitle] = result.Created.Title;
+        TempData[TempCreatedId] = result.Created.Id.ToString("D");
         if (!string.IsNullOrWhiteSpace(result.Created.GuestCode))
         {
             TempData[TempGuestCode] = result.Created.GuestCode;
@@ -151,7 +153,14 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
             return;
         }
 
+        Guid? id = null;
+        if (TempData[TempCreatedId] is string idText && Guid.TryParse(idText, out var parsed))
+        {
+            id = parsed;
+        }
+
         JustCreated = new CreatedSecrets(
+            id,
             slug,
             TempData[TempCreatedTitle] as string ?? slug,
             TempData[TempGuestCode] as string,
@@ -187,6 +196,7 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
         bool CanControl);
 
     public sealed record CreatedSecrets(
+        Guid? Id,
         string Slug,
         string Title,
         string? GuestCode,

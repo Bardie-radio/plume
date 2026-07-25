@@ -84,3 +84,13 @@ public sealed class BffLoginResponse
     [JsonPropertyName("error")]
     public string? Error { get; set; }
 }
+
+public sealed class BffGuestExchangeRequest
+{
+    [JsonPropertyName("guest_code")]
+    public string? GuestCode { get; set; }
+
+    /// <summary>Alias for <see cref="GuestCode"/>.</summary>
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+}

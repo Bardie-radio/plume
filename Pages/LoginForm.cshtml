@@ -9,7 +9,12 @@
 
 <section class="mx-auto max-w-md space-y-6 py-8">
     <p class="text-sm">
-        <a class="underline underline-offset-2" href="/login">All sign-in methods</a>
+        @{
+            var allMethodsHref = string.IsNullOrWhiteSpace(Model.ReturnUrl)
+                ? "/login"
+                : $"/login?ReturnUrl={Uri.EscapeDataString(Model.ReturnUrl)}";
+        }
+        <a class="underline underline-offset-2" href="@allMethodsHref">All sign-in methods</a>
     </p>
 
     <h1 class="text-2xl font-semibold tracking-tight">@title</h1>
@@ -29,6 +34,7 @@
     {
         <form method="post" class="space-y-4">
             <input type="hidden" asp-for="ProviderId" />
+            <input type="hidden" asp-for="ReturnUrl" />
 
             @foreach (var field in provider.FormFields)
             {

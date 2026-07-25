@@ -23,6 +23,10 @@ public class LoginFormModel(
     [BindProperty(SupportsGet = true)]
     public string ProviderId { get; set; } = string.Empty;
 
+    /// <summary>Preserved from <c>/login?ReturnUrl=…</c> (e.g. after Challenge from control).</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
+
     /// <summary>Set only for <see cref="FormSchemaMode"/> (redirect returns before the view).</summary>
     public DiscoveryProvider? Provider { get; private set; }
 
@@ -34,12 +38,12 @@ public class LoginFormModel(
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToPage("/Index");
+            return Redirect(LoginModel.SafeLocalRedirect(ReturnUrl) ?? "/");
         }
 
         if (string.IsNullOrWhiteSpace(ProviderId))
         {
-            return RedirectToPage("/Login");
+            return RedirectToPage("/Login", new { ReturnUrl });
         }
 
         var provider = await ResolveProviderAsync(cancellationToken).ConfigureAwait(false);
@@ -55,12 +59,12 @@ public class LoginFormModel(
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToPage("/Index");
+            return Redirect(LoginModel.SafeLocalRedirect(ReturnUrl) ?? "/");
         }
 
         if (string.IsNullOrWhiteSpace(ProviderId))
         {
-            return RedirectToPage("/Login");
+            return RedirectToPage("/Login", new { ReturnUrl });
         }
 
         var provider = await ResolveProviderAsync(cancellationToken).ConfigureAwait(false);
@@ -106,7 +110,7 @@ public class LoginFormModel(
         }
 
         await sessions.EstablishAsync(HttpContext, result.Tokens, cancellationToken).ConfigureAwait(false);
-        return RedirectToPage("/Index");
+        return Redirect(LoginModel.SafeLocalRedirect(ReturnUrl) ?? "/");
     }
 
     private IActionResult StartProviderUi(DiscoveryProvider provider)

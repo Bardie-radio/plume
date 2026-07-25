@@ -159,21 +159,73 @@ public sealed class AuthLoginTests
     }
 
     [Fact]
-    public async Task Guest_exchange_is_not_json_proxied()
+    public async Task Guest_exchange_establishes_session_without_tokens_in_body()
     {
         var client = _factory.CreateClient();
-        await SeedSessionAsync(client, new SessionTokens("access-old", "refresh-old", "bes"));
-        _factory.Kithara.Requests.Clear();
-
         var strunaId = Guid.NewGuid();
+
         using var response = await client.PostAsJsonAsync(
             $"/bff/streams/{strunaId}/guest/exchange",
-            new { guest_code = "ABCD" });
+            new { guest_code = "ABCD12" });
 
-        Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"ok\":true", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("access_token", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("refresh_token", body, StringComparison.Ordinal);
+
+        var setCookies = ParseSetCookies(response);
+        var sid = Assert.Single(setCookies, c => c.Name == "plume.sid");
+        Assert.True(sid.HttpOnly);
+
+        var exchange = Assert.Single(
+            _factory.Kithara.Requests,
+            r => r.Method == "POST" && r.Path.Contains("/guest/exchange", StringComparison.OrdinalIgnoreCase));
+        Assert.Null(exchange.Bearer);
+
+        var sessions = _factory.Services.GetRequiredService<IPlumeSessionService>();
+        var http = new DefaultHttpContext();
+        http.Request.Headers.Cookie = $"{sid.Name}={sid.Value}";
+        var stored = await sessions.TryGetAsync(http);
+        Assert.NotNull(stored);
+        Assert.Equal("access-guest", stored.AccessToken);
+        Assert.Equal("kithara.guest", stored.ProviderId);
+    }
+
+    [Fact]
+    public async Task Guest_exchange_by_slug_establishes_session_without_tokens_in_body()
+    {
+        var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/bff/streams/by-slug/party/guest/exchange",
+            new { guest_code = "ABCD12" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"ok\":true", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("access_token", body, StringComparison.Ordinal);
+
+        var exchange = Assert.Single(
+            _factory.Kithara.Requests,
+            r => r.Method == "POST" && r.Path.Contains("/by-slug/party/guest/exchange", StringComparison.OrdinalIgnoreCase));
+        Assert.Null(exchange.Bearer);
+    }
+
+    [Fact]
+    public async Task Guest_exchange_failure_returns_error_without_tokens_or_session()
+    {
+        _factory.Kithara.GuestExchangeSucceeds = false;
+        var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            $"/bff/streams/{Guid.NewGuid()}/guest/exchange",
+            new { guest_code = "WRONG" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("access_token", body, StringComparison.Ordinal);
-        Assert.Empty(_factory.Kithara.Requests);
+        Assert.False(response.Headers.Contains(HeaderNames.SetCookie));
     }
 
     private async Task SeedSessionAsync(HttpClient client, SessionTokens tokens)

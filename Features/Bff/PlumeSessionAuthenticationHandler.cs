@@ -42,8 +42,18 @@ public sealed class PlumeSessionAuthenticationHandler(
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        // Razor pages: send anonymous users to discovery login.
-        Response.Redirect("/login");
+        // Razor pages: send anonymous users to discovery login, keeping the path so
+        // /control/{slug} can prefill the guest-join slug field.
+        var path = Request.Path.HasValue ? Request.Path.Value! : "/";
+        var query = Request.QueryString.HasValue ? Request.QueryString.Value! : string.Empty;
+        var returnUrl = path + query;
+        if (!returnUrl.StartsWith('/') || returnUrl.StartsWith("//", StringComparison.Ordinal))
+        {
+            Response.Redirect("/login");
+            return Task.CompletedTask;
+        }
+
+        Response.Redirect($"/login?ReturnUrl={Uri.EscapeDataString(returnUrl)}");
         return Task.CompletedTask;
     }
 }

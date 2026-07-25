@@ -32,7 +32,7 @@ Never call auth-adapter containers from the browser.
 
 ## Guest control (protected Struna)
 
-Short guest code is **exchange-only**: BFF `POST` → Kithara `POST /api/streams/{id}/guest/exchange` → Plume holds the **guest control JWT** server-side for that Struna. Do not send the code on every play/queue call. Respect exchange rate limits ([SEC-05](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/mvp/security-audit.md)). See [struna-access](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/domains/struna-access.md) · [security-notes](mvp/security-notes.md).
+Short guest code is **exchange-only**: BFF `POST` → Kithara `POST /api/streams/by-slug/{slug}/guest/exchange` (or `{id}`) → Plume holds the **guest control JWT** server-side for that Struna. Share `/control/{slug}` + the code separately — never put the code in the URL. Do not send the code on every play/queue call. Respect exchange rate limits ([SEC-05](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/mvp/security-audit.md)). See [struna-access](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/domains/struna-access.md) · [security-notes](mvp/security-notes.md).
 
 ## Playback control UI
 

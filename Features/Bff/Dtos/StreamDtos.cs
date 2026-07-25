@@ -31,6 +31,14 @@ public sealed class StrunaSummary
 
     [JsonPropertyName("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Owner-only on <c>GET /api/streams/{id}</c> (and create response).</summary>
+    [JsonPropertyName("guest_code")]
+    public string? GuestCode { get; set; }
+
+    /// <summary>Owner-only on <c>GET /api/streams/{id}</c> (and create response).</summary>
+    [JsonPropertyName("listen_token")]
+    public string? ListenToken { get; set; }
 }
 
 public sealed class CreateStrunaRequestBody

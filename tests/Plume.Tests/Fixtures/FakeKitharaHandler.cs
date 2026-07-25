@@ -176,6 +176,25 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
             return HandleOpenBySlug(path);
         }
 
+        if (request.Method == HttpMethod.Get
+            && path.StartsWith("/api/streams/", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(path["/api/streams/".Length..].Trim('/'), out var streamId))
+        {
+            return HandleGetStream(streamId, bearer);
+        }
+
+        if (request.Method == HttpMethod.Delete
+            && path.StartsWith("/api/streams/", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(path["/api/streams/".Length..].Trim('/'), out _))
+        {
+            if (!string.Equals(bearer, AccessToken, StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }
+
         // Catch-all JSON mutations (play / queue / …) — assert Content-Type in proxy tests.
         if (request.Method == HttpMethod.Post
             && path.StartsWith("/api/streams/", StringComparison.OrdinalIgnoreCase))
@@ -437,7 +456,7 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(
-                """{"sub":"user-1"}""",
+                """{"user_id":"11111111-1111-1111-1111-111111111111","sub":"user-1","username":"admin"}""",
                 Encoding.UTF8,
                 "application/json"),
         };
@@ -573,6 +592,33 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(meta, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    private HttpResponseMessage HandleGetStream(Guid streamId, string? bearer)
+    {
+        if (!string.Equals(bearer, AccessToken, StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        }
+
+        var ownerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var body = JsonSerializer.Serialize(new
+        {
+            id = streamId == Guid.Empty ? OpenStrunaId : streamId,
+            slug = OpenBySlug ?? "party",
+            title = OpenTitle,
+            playback_access = OpenPlaybackAccess,
+            control_access = "protected",
+            owner_user_id = ownerId,
+            created_at = DateTimeOffset.UtcNow,
+            guest_code = ExpectedGuestCode,
+            listen_token = (string?)null,
+        });
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
         };
     }
 

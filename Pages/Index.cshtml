@@ -13,18 +13,13 @@
     @if (Model.JustCreated is { } created)
     {
         <aside class="space-y-3 border border-amber-300 bg-amber-50 px-4 py-3 text-sm" role="status">
-            <p class="font-medium">Created <span class="font-mono">@created.Slug</span> — copy these now; they won’t be shown again.</p>
+            <p class="font-medium">Created <span class="font-mono">@created.Slug</span>.</p>
             @if (!string.IsNullOrEmpty(created.GuestCode))
             {
-                <p>
-                    <span class="text-neutral-600">Guest code</span>
-                    <code class="ml-2 select-all font-mono">@created.GuestCode</code>
-                </p>
                 <p class="text-neutral-600">
-                    Share
-                    <a class="underline underline-offset-2 font-mono text-xs"
-                       href="/control/@Uri.EscapeDataString(created.Slug)">/control/@created.Slug</a>
-                    — guests enter the code on the sign-in page (slug is filled in automatically).
+                    Guest code lives on the
+                    <a class="underline underline-offset-2" href="/control/@Uri.EscapeDataString(created.Slug)">control desk</a>
+                    (reveal to copy) — not shown again here.
                 </p>
             }
             @if (!string.IsNullOrEmpty(created.ListenToken))
@@ -33,6 +28,7 @@
                     <span class="text-neutral-600">Listen token</span>
                     <code class="ml-2 select-all break-all font-mono">@created.ListenToken</code>
                 </p>
+                <p class="text-neutral-600">Copy the listen token now; it is also available on the control desk for the owner.</p>
             }
             @if (string.IsNullOrEmpty(created.GuestCode) && string.IsNullOrEmpty(created.ListenToken))
             {

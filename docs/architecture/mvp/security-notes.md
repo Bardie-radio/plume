@@ -21,7 +21,12 @@ Islands run with user-controlled strings (titles, search hits). XSS in a widget 
 
 ### PLUME-SEC-001 — Content-Security-Policy
 
-Plume sets a default CSP on responses (`default-src 'self'`, no third-party script CDNs). Style keeps `'unsafe-inline'` for Tailwind-built CSS. Tune if islands need more.
+Plume sets a default CSP on responses (`default-src 'self'`, no third-party script CDNs). Style keeps `'unsafe-inline'` for Tailwind-built CSS.
+
+- **`media-src`:** `'self' blob:` plus the origin of `Kithara:PublicBaseUrl` when set (local Compose streams from Kithara on another port, e.g. `http://localhost:8080`).
+- **`img-src`:** `'self' data: https:` so Magpie/YouTube (and other module) cover art can load without pinning every CDN host.
+
+Tune further if islands need more.
 
 ### PLUME-SEC-002 — BFF antiforgery
 

@@ -80,7 +80,8 @@ public class IndexModel(IKitharaStreamsClient streams) : PageModel
             return await LoadListsAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        // Reveal guest_code / listen_token once — never store them in the session.
+        // Guest code / listen token: owner reads them on the control desk (spoiler).
+        // Still pass via TempData so the create banner can link / mention listen token once.
         TempData[TempCreatedSlug] = result.Created.Slug;
         TempData[TempCreatedTitle] = result.Created.Title;
         TempData[TempCreatedId] = result.Created.Id.ToString("D");

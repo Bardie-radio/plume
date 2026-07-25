@@ -30,6 +30,7 @@
             <div class="space-y-4">
                 <partial name="_IslandHost" model="@(new IslandHostModel { Island = "now-playing", StrunaId = strunaId, StrunaSlug = Model.Slug, Variant = "compact" })" />
                 <partial name="_IslandHost" model="@(new IslandHostModel { Island = "transport", StrunaId = strunaId, StrunaSlug = Model.Slug })" />
+                <partial name="_IslandHost" model="@(new IslandHostModel { Island = "struna-settings", StrunaId = strunaId, StrunaSlug = Model.Slug })" />
             </div>
         </div>
     }

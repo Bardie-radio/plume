@@ -4,6 +4,7 @@ import QueueIsland from "./QueueIsland.vue";
 import SearchIsland from "./SearchIsland.vue";
 import AudioIsland from "./AudioIsland.vue";
 import ListenIsland from "./ListenIsland.vue";
+import StrunaSettingsIsland from "./StrunaSettingsIsland.vue";
 
 /** @type {Record<string, import("vue").Component>} */
 export const islandRegistry = {
@@ -13,4 +14,5 @@ export const islandRegistry = {
   search: SearchIsland,
   audio: AudioIsland,
   listen: ListenIsland,
+  "struna-settings": StrunaSettingsIsland,
 };

@@ -15,6 +15,7 @@ public sealed class PlumeWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Kithara:BaseUrl", "http://kithara.test");
+        builder.UseSetting("Kithara:PublicBaseUrl", "http://localhost:8080");
         builder.UseSetting("Session:CookieName", "plume.sid");
         builder.UseSetting("Session:SameSite", "Lax");
         // Mesh Register needs a live Kithara gRPC — keep BFF tests offline.

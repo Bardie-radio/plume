@@ -201,6 +201,26 @@ public sealed class BffProbeTests
         Assert.True(response.Headers.Contains("Content-Security-Policy"));
         var csp = string.Join(' ', response.Headers.GetValues("Content-Security-Policy"));
         Assert.Contains("default-src 'self'", csp, StringComparison.Ordinal);
+        Assert.Contains("img-src 'self' data: https:", csp, StringComparison.Ordinal);
+        Assert.Contains("media-src 'self' blob: http://localhost:8080", csp, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Content_security_policy_includes_public_stream_origin()
+    {
+        var withPublic = ContentSecurityPolicyMiddleware.BuildPolicy(new KitharaOptions
+        {
+            PublicBaseUrl = "http://localhost:8080/",
+        });
+        Assert.Contains("media-src 'self' blob: http://localhost:8080", withPublic, StringComparison.Ordinal);
+        Assert.Contains("img-src 'self' data: https:", withPublic, StringComparison.Ordinal);
+
+        var sameOrigin = ContentSecurityPolicyMiddleware.BuildPolicy(new KitharaOptions
+        {
+            PublicBaseUrl = "",
+        });
+        Assert.Contains("media-src 'self' blob:;", sameOrigin, StringComparison.Ordinal);
+        Assert.DoesNotContain("http://localhost:8080", sameOrigin, StringComparison.Ordinal);
     }
 
     private async Task<string> SeedSessionAsync(HttpClient client, SessionTokens tokens)

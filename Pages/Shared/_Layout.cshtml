@@ -29,8 +29,9 @@
     </main>
     @*
       Vue islands: mark host nodes with data-plume-island="<name>"
-      (now-playing | transport | queue | search | audio) plus
-      data-struna-id / data-struna-slug (and optional data-variant / data-stream-url).
+      (now-playing | transport | queue | search | audio | listen) plus
+      data-struna-id / data-struna-slug (and optional data-variant / data-stream-url /
+      data-playback-access). now-playing variant is code-selected: compact (control) vs prominent.
       main.js mounts them after the document is parsed.
     *@
     <script type="module" src="~/dist/assets/main.js" asp-append-version="true"></script>

@@ -12,6 +12,9 @@ public sealed class IslandHostModel
     /// <summary>Optional; used by now-playing (<c>compact</c> | <c>prominent</c>).</summary>
     public string? Variant { get; init; }
 
-    /// <summary>Optional; used by audio (Kithara <c>/stream/{slug}</c> URL).</summary>
+    /// <summary>Optional; used by audio (Kithara <c>/stream/{slug}</c> URL, no listen token).</summary>
     public string? StreamUrl { get; init; }
+
+    /// <summary>Optional; <c>public</c> / <c>protected</c> / <c>private</c> for audio gate UX.</summary>
+    public string? PlaybackAccess { get; init; }
 }

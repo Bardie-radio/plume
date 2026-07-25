@@ -8,5 +8,6 @@ export function readIslandProps(el) {
     strunaSlug: el.dataset.strunaSlug ?? "",
     variant: el.dataset.variant || "compact",
     streamUrl: el.dataset.streamUrl || "",
+    playbackAccess: el.dataset.playbackAccess || "public",
   };
 }

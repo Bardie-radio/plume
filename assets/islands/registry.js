@@ -3,6 +3,7 @@ import TransportIsland from "./TransportIsland.vue";
 import QueueIsland from "./QueueIsland.vue";
 import SearchIsland from "./SearchIsland.vue";
 import AudioIsland from "./AudioIsland.vue";
+import ListenIsland from "./ListenIsland.vue";
 
 /** @type {Record<string, import("vue").Component>} */
 export const islandRegistry = {
@@ -11,4 +12,5 @@ export const islandRegistry = {
   queue: QueueIsland,
   search: SearchIsland,
   audio: AudioIsland,
+  listen: ListenIsland,
 };

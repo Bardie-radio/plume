@@ -1,100 +1,61 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
-import { bffGet } from "../lib/bff.js";
-import { startPoll } from "../lib/poll.js";
+import { computed } from "vue";
+import CoverArt from "./CoverArt.vue";
+import { useNowPlaying } from "../lib/useNowPlaying.js";
 
 const props = defineProps({
   strunaId: { type: String, default: "" },
   strunaSlug: { type: String, default: "" },
-  /** @type {"compact" | "prominent"} */
+  /** @type {"compact" | "prominent"} — control desk vs listen (code-selected, not a user toggle). */
   variant: { type: String, default: "compact" },
 });
 
-const playing = ref(false);
-const paused = ref(false);
-const title = ref("");
-const artist = ref("");
-const streamTitle = ref("");
-const error = ref("");
-let stopPoll = null;
+const { artworkUrl, error, headline, status, title } = useNowPlaying(
+  () => props.strunaId,
+);
 
-const headline = computed(() => {
-  if (!playing.value) {
-    return "Nothing playing";
-  }
-
-  if (streamTitle.value) {
-    return streamTitle.value;
-  }
-
-  const parts = [title.value, artist.value].filter(Boolean);
-  return parts.length > 0 ? parts.join(" — ") : "Playing";
-});
-
-const status = computed(() => {
-  if (!playing.value) {
-    return "idle";
-  }
-
-  return paused.value ? "paused" : "playing";
-});
-
-async function refresh() {
-  if (!props.strunaId) {
-    error.value = "Missing Struna id.";
-    return;
-  }
-
-  try {
-    const data = await bffGet(`/bff/streams/${props.strunaId}/now-playing`);
-    playing.value = Boolean(data?.playing);
-    paused.value = Boolean(data?.paused);
-    title.value = data?.title ?? "";
-    artist.value = data?.artist ?? "";
-    streamTitle.value = data?.stream_title ?? "";
-    error.value = "";
-  } catch (e) {
-    if (e?.status === 401) {
-      return;
-    }
-
-    error.value = e?.message ?? "Could not load now playing.";
-  }
-}
-
-onMounted(() => {
-  stopPoll = startPoll(refresh);
-});
-
-onUnmounted(() => {
-  stopPoll?.();
-});
+const prominent = computed(() => props.variant === "prominent");
 </script>
 
 <template>
   <section
-    class="plume-island space-y-1 border border-neutral-200 px-3 py-2 text-sm"
-    :class="variant === 'prominent' ? 'space-y-2 px-4 py-4' : ''"
+    class="plume-island border border-neutral-200 text-sm"
+    :class="prominent ? 'space-y-3 px-4 py-4' : 'px-3 py-3'"
     :data-variant="variant"
     aria-label="Now playing"
     aria-live="polite"
   >
-    <p
-      class="font-medium tracking-tight text-neutral-500"
-      :class="variant === 'prominent' ? 'text-xs uppercase' : 'text-xs'"
+    <!-- Compact (control): text left, small cover right -->
+    <div
+      v-if="!prominent"
+      class="flex items-center gap-3"
     >
-      Now playing
-    </p>
-    <p
-      class="font-medium tracking-tight"
-      :class="variant === 'prominent' ? 'text-xl' : 'text-sm'"
-    >
-      {{ headline }}
-    </p>
-    <p class="font-mono text-xs text-neutral-500">
-      {{ strunaSlug || "—" }}
-      <span class="text-neutral-400"> · {{ status }}</span>
-    </p>
-    <p v-if="error" class="text-red-700" role="alert">{{ error }}</p>
+      <div class="min-w-0 flex-1 space-y-0.5">
+        <p class="text-xs font-medium tracking-tight text-neutral-500">Now playing</p>
+        <p class="truncate font-medium tracking-tight">{{ headline }}</p>
+        <p class="font-mono text-xs text-neutral-500">
+          {{ strunaSlug || "—" }}
+          <span class="text-neutral-400"> · {{ status }}</span>
+        </p>
+      </div>
+      <CoverArt :src="artworkUrl" :alt="title || headline" size="sm" />
+    </div>
+
+    <!-- Prominent: large cover on top, text under (used if mounted alone) -->
+    <div v-else class="space-y-3">
+      <div class="mx-auto w-full max-w-md">
+        <CoverArt :src="artworkUrl" :alt="title || headline" size="lg" />
+      </div>
+      <div class="space-y-1 text-center">
+        <p class="text-xs font-medium uppercase tracking-tight text-neutral-500">Now playing</p>
+        <p class="text-xl font-medium tracking-tight">{{ headline }}</p>
+        <p class="font-mono text-xs text-neutral-500">
+          {{ strunaSlug || "—" }}
+          <span class="text-neutral-400"> · {{ status }}</span>
+        </p>
+      </div>
+    </div>
+
+    <p v-if="error" class="mt-2 text-red-700" role="alert">{{ error }}</p>
   </section>
 </template>

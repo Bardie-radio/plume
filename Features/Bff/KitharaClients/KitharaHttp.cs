@@ -21,6 +21,27 @@ public static class KitharaHttp
     }
 
     /// <summary>
+    /// Browser URL for ICY listen. Uses <see cref="KitharaOptions.PublicBaseUrl"/> when set;
+    /// otherwise a same-origin relative path (edge path map).
+    /// </summary>
+    public static string BuildStreamUrl(KitharaOptions options, string slug, string? listenToken = null)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+
+        var path = "/stream/" + Uri.EscapeDataString(slug.Trim());
+        var publicBase = options.PublicBaseUrl?.TrimEnd('/');
+        var url = string.IsNullOrWhiteSpace(publicBase) ? path : publicBase + path;
+
+        if (!string.IsNullOrWhiteSpace(listenToken))
+        {
+            url += "?token=" + Uri.EscapeDataString(listenToken.Trim());
+        }
+
+        return url;
+    }
+
+    /// <summary>
     /// Posts refresh; when the response omits <c>refresh_token</c>, keeps the prior value.
     /// Provider id is never rotated.
     /// </summary>

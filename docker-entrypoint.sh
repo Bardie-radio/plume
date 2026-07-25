@@ -9,7 +9,8 @@ mkdir -p "$KEYS" "$TLS"
 if [ "$(id -u)" = "0" ]; then
   uid="${APP_UID:-1654}"
   chown -R "${uid}:${uid}" "$KEYS" "$TLS"
-  exec setpriv --reuid="$uid" --regid="$uid" --clear-groups -- "$@"
+  # Alpine: su-exec (setpriv is util-linux and heavier).
+  exec su-exec "${uid}:${uid}" "$@"
 fi
 
 exec "$@"

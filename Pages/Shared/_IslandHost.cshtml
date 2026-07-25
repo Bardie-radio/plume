@@ -1,0 +1,17 @@
+@model Plume.Pages.Shared.IslandHostModel
+@*
+  Vue island mount point. _Layout loads main.js which mounts [data-plume-island].
+
+  Example:
+    <partial name="_IslandHost" model='new IslandHostModel {
+        Island = "queue",
+        StrunaId = Model.StrunaId.ToString("D"),
+        StrunaSlug = Model.Slug
+    }' />
+*@
+<div data-plume-island="@Model.Island"
+     data-struna-id="@Model.StrunaId"
+     data-struna-slug="@Model.StrunaSlug"
+     data-variant="@Model.Variant"
+     data-stream-url="@Model.StreamUrl">
+</div>

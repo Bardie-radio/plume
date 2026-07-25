@@ -24,7 +24,7 @@ public sealed class AuthLoginTests
     }
 
     [Fact]
-    public async Task Discovery_without_session_returns_form_schema_providers()
+    public async Task Discovery_without_session_returns_login_form_providers()
     {
         var client = _factory.CreateClient();
 
@@ -32,7 +32,7 @@ public sealed class AuthLoginTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadAsStringAsync();
-        Assert.Contains("form_schema", json, StringComparison.Ordinal);
+        Assert.Contains("login_form", json, StringComparison.Ordinal);
         Assert.Contains("form_fields", json, StringComparison.Ordinal);
         Assert.Contains("username", json, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", json, StringComparison.Ordinal);

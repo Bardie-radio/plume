@@ -17,6 +17,7 @@ public static class BffAuthEndpoints
         group.MapGet("/auth/discovery", DiscoveryAsync);
         group.MapPost("/auth/login", LoginAsync);
         group.MapPost("/auth/logout", LogoutAsync);
+        group.MapPost("/auth/bindings/{provider}", UpdateBindingAsync);
 
         group.MapPost("/streams/{strunaId:guid}/guest/exchange", GuestExchangeAsync);
         group.MapPost("/streams/by-slug/{slug}/guest/exchange", GuestExchangeBySlugAsync);
@@ -161,7 +162,54 @@ public static class BffAuthEndpoints
         await sessions.EstablishAsync(http, result.Tokens, cancellationToken).ConfigureAwait(false);
 
         // Success/error only — never access_token / refresh_token.
-        return Results.Json(new BffLoginResponse { Ok = true });
+        return Results.Json(new BffLoginResponse
+        {
+            Ok = true,
+            MustRotateCredentials = result.MustRotateCredentials,
+        });
+    }
+
+    private static async Task<IResult> UpdateBindingAsync(
+        string provider,
+        [FromBody] BindingUpdateRequestBody? body,
+        IKitharaAuthClient auth,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            return Results.Json(
+                new BffLoginResponse { Ok = false, Error = "provider is required." },
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var payload = body?.Payload ?? new Dictionary<string, string>();
+        var result = await auth
+            .UpdateBindingAsync(http, provider, payload, body?.Ceremony, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!result.Succeeded)
+        {
+            var status = result.StatusCode is HttpStatusCode.BadRequest
+                or HttpStatusCode.Unauthorized
+                or HttpStatusCode.Forbidden
+                ? (int)result.StatusCode
+                : StatusCodes.Status400BadRequest;
+
+            return Results.Json(
+                new BffLoginResponse
+                {
+                    Ok = false,
+                    Error = result.Error ?? "Binding update failed.",
+                },
+                statusCode: status);
+        }
+
+        return Results.Json(new BffLoginResponse
+        {
+            Ok = true,
+            MustRotateCredentials = result.MustRotateCredentials,
+        });
     }
 
     private static async Task<IResult> LogoutAsync(

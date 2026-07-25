@@ -10,7 +10,7 @@ Plume-owned delivery order. **Plume Phases 1–6** are the real work packages. *
 |-------|------|---------|
 | **1** | Host baseline | Strip Identity/EF/SQLite/Bootstrap; Razor Pages host; Tailwind (+ Vite); empty `/` |
 | **2** | BFF + session | httpOnly cookie; server-side access/refresh store; `/bff/*` → Kithara Bearer; no JWT in browser |
-| **3** | Discovery login | Razor renders `form_schema` (Bes); authenticate/refresh via BFF; never branch on provider id |
+| **3** | Discovery login | Razor renders `login_form` (Bes); `bind_form` for rotate; authenticate/refresh via BFF; never branch on provider id |
 | **4** | Struna home | `/` list/create; links to **control** + **player** |
 | **5** | Control desk | `/control/{slug}` — queue + search + transport (+ compact now-playing); poll; BFF mutations |
 | **6** | Player, guest, mesh | `/player/{slug}` prominent now-playing; audio **off by default**; guest exchange; Register + OTel; edge `/control/*` + `/player/*` |
@@ -92,7 +92,7 @@ Tracking issues:
 
 ### Work
 
-1. BFF `GET` discovery → Razor renders `form_schema` fields (or starts `redirect`).
+1. BFF `GET` discovery → Razor renders `login_form` fields (or starts `redirect`); `bind_form` for credential update.
 2. Authenticate / refresh via BFF; store tokens server-side.
 3. Never `if (provider.id == "bes")`.
 
@@ -106,7 +106,7 @@ Tracking issues:
 | Repo | Follow-up |
 |------|-----------|
 | **kithara** | [auth](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/interfaces/auth.md) |
-| **bes** | form_schema fields stable |
+| **bes** | login_form + bind_form fields stable |
 
 ---
 

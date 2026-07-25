@@ -14,16 +14,31 @@ public interface IKitharaAuthClient
         string providerId,
         IReadOnlyDictionary<string, string> payload,
         CancellationToken cancellationToken = default);
+
+    Task<AuthBindingResult> UpdateBindingAsync(
+        HttpContext http,
+        string providerId,
+        IReadOnlyDictionary<string, string> payload,
+        string? ceremony = null,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record AuthLoginResult(
     bool Succeeded,
     SessionTokens? Tokens,
     string? Error,
+    HttpStatusCode StatusCode,
+    bool MustRotateCredentials = false);
+
+public sealed record AuthBindingResult(
+    bool Succeeded,
+    bool MustRotateCredentials,
+    string? Error,
     HttpStatusCode StatusCode);
 
 public sealed class KitharaAuthClient(
     IHttpClientFactory httpClientFactory,
+    IKitharaUpstreamClient upstream,
     IOptions<KitharaOptions> kitharaOptions) : IKitharaAuthClient
 {
     public async Task<DiscoveryResponse?> GetDiscoveryAsync(CancellationToken cancellationToken = default)
@@ -107,6 +122,60 @@ public sealed class KitharaAuthClient(
         return new AuthLoginResult(
             true,
             new SessionTokens(body.AccessToken, body.RefreshToken, providerId),
+            null,
+            HttpStatusCode.OK,
+            body.MustRotateCredentials);
+    }
+
+    public async Task<AuthBindingResult> UpdateBindingAsync(
+        HttpContext http,
+        string providerId,
+        IReadOnlyDictionary<string, string> payload,
+        string? ceremony = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(http);
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
+        ArgumentNullException.ThrowIfNull(payload);
+
+        using var content = JsonContent.Create(new BindingUpdateRequestBody
+        {
+            Payload = payload.ToDictionary(static kv => kv.Key, static kv => kv.Value),
+            Ceremony = ceremony,
+        });
+        using var response = await upstream
+            .SendAsync(
+                http,
+                HttpMethod.Post,
+                $"auth/bindings/{Uri.EscapeDataString(providerId)}",
+                content,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (response is null)
+        {
+            return new AuthBindingResult(
+                false,
+                false,
+                "Session expired. Sign in again.",
+                HttpStatusCode.Unauthorized);
+        }
+
+        var body = await KitharaHttp
+            .TryReadJsonAsync<BindingUpdateResponseBody>(response.Content, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = string.IsNullOrWhiteSpace(body?.Error)
+                ? "Binding update failed."
+                : body.Error;
+            return new AuthBindingResult(false, false, error, response.StatusCode);
+        }
+
+        return new AuthBindingResult(
+            true,
+            body?.MustRotateCredentials ?? false,
             null,
             HttpStatusCode.OK);
     }

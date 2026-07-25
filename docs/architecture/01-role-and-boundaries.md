@@ -8,7 +8,7 @@ Plume is a **thin UI client + BFF**: Razor SSR pages, Vue CSR widgets, server-si
 
 - Routes `/`, `/control/{slug}`, `/player/{slug}` (edge routes those paths here)
 - **BFF session**: httpOnly cookie → Plume → Kithara Bearer (no JWT in the browser)
-- Rendering login UI from Kithara **discovery** (`form_schema` / `redirect` oneof — never branch on provider id)
+- Rendering login UI from Kithara **discovery** (`login_form` / `redirect` oneof + optional `bind_form` — never branch on provider id)
 - Remote **control desk** and **listen / player** surfaces composed from shared widgets
 - Optional in-browser listen (opt-in to `/stream/{slug}`) — **audio off by default**
 - OTLP as `bardie.plume`

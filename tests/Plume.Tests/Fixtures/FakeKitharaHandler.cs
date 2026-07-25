@@ -171,7 +171,24 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
                     id = ProviderId,
                     display_name = "Bes",
                     module = ProviderId,
-                    ui_mode = "form_schema",
+                    ui_mode = "login_form",
+                    login_form = new[]
+                    {
+                        new
+                        {
+                            name = "username",
+                            label = "Username",
+                            input_type = "text",
+                            required = true,
+                        },
+                        new
+                        {
+                            name = "password",
+                            label = "Password",
+                            input_type = "password",
+                            required = true,
+                        },
+                    },
                     form_fields = new[]
                     {
                         new
@@ -187,6 +204,30 @@ public sealed class FakeKitharaHandler : HttpMessageHandler
                             label = "Password",
                             input_type = "password",
                             required = true,
+                        },
+                    },
+                    bind_form = new[]
+                    {
+                        new
+                        {
+                            name = "username",
+                            label = "Username",
+                            input_type = "text",
+                            required = false,
+                        },
+                        new
+                        {
+                            name = "password",
+                            label = "Current password",
+                            input_type = "password",
+                            required = true,
+                        },
+                        new
+                        {
+                            name = "new_password",
+                            label = "New password",
+                            input_type = "password",
+                            required = false,
                         },
                     },
                     authorize_url = (string?)null,

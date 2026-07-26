@@ -79,6 +79,8 @@ public sealed class PlumeSessionService(
         return true;
     }
 
+    // Secure follows Request.IsHttps, which reflects X-Forwarded-Proto after
+    // UseForwardedHeaders (PLUME-FWD-001). HTTP-only edges stay Secure=false.
     private CookieOptions BuildCookieOptions(HttpContext http) =>
         new()
         {

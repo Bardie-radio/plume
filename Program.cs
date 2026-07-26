@@ -1,8 +1,10 @@
 using Bardie.Logos.Channel.Participant;
 using Bardie.Logos.Hosting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using Plume.Features.Bff;
+using Plume.Features.Hosting;
 using Plume.Features.Mesh;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +21,14 @@ builder.Services.AddSingleton<IModuleRegisterRequestCustomizer, PlumeClientRegis
 
 builder.Services.AddRazorPages();
 builder.Services.AddPlumeBff(builder.Configuration);
+
+// PLUME-FWD-001: honor X-Forwarded-Proto only when BARDIE_FORWARDED_HEADERS_* is set.
+// Unset = no proxy (Secure cookies follow the direct connection).
+if (ForwardedHeadersConfiguration.IsEnabled(builder.Configuration))
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+        ForwardedHeadersConfiguration.Apply(options, builder.Configuration));
+}
 
 // Persist antiforgery keys when configured (Compose: /app/dp-keys volume).
 // Ephemeral in-memory keys are fine for bare `dotnet run`.
@@ -38,7 +48,15 @@ await app.EnsureModuleParticipantServerCertificateAsync().ConfigureAwait(false);
 var participantOptions = app.Services.GetRequiredService<IOptions<ModuleParticipantOptions>>().Value;
 var httpPort = ModuleHostingPorts.ResolveHttpPort(builder.Configuration);
 app.Logger.LogInformation(
-    "Plume starting as {Slug} ({Otel}); HTTP :{HttpPort}; work gRPC :{Port} (idle); host={Host}; register={Register}",
+    """
+
+    ======================================================================
+      PLUME starting — {Slug} ({Otel})
+    ----------------------------------------------------------------------
+      HTTP :{HttpPort}  ·  work gRPC :{Port} (idle)
+      host={Host}  ·  register={Register}
+    ======================================================================
+    """,
     manifest.Slug,
     manifest.OtelServiceName,
     httpPort,
@@ -46,13 +64,19 @@ app.Logger.LogInformation(
     participantOptions.HostGrpcAddress,
     participantOptions.EnableRegistration);
 
+if (ForwardedHeadersConfiguration.IsEnabled(app.Configuration))
+{
+    app.UseForwardedHeaders();
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    app.UseHsts();
+    // HSTS belongs on the TLS-terminating edge (Traefik / nginx), not on the
+    // internal HTTP Plume container — emitting it here breaks HTTP-only edges.
 }
 
-// Local Compose is HTTP-only; skip redirect noise when no HTTPS port is configured.
+// Local Compose / bundled edge is HTTP-only; skip redirect noise when no HTTPS port is configured.
 var httpsPort = Environment.GetEnvironmentVariable("ASPNETCORE_HTTPS_PORT")
     ?? builder.Configuration["HTTPS_PORTS"];
 if (!string.IsNullOrWhiteSpace(httpsPort)
@@ -60,6 +84,9 @@ if (!string.IsNullOrWhiteSpace(httpsPort)
 {
     app.UseHttpsRedirection();
 }
+
+// Vite emits wwwroot/dist — serve before auth so CSS/JS are never gated.
+app.UseStaticFiles();
 
 app.UseRouting();
 app.UseMiddleware<ContentSecurityPolicyMiddleware>();

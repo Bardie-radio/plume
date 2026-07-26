@@ -1,5 +1,5 @@
-using Bardie.Module.Channel.Manifest;
-using Bardie.Module.Channel.Participant;
+using Bardie.Logos.Channel.Manifest;
+using Bardie.Logos.Channel.Participant;
 using Bardie.Modules.V1;
 
 namespace Plume.Features.Mesh;

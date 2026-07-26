@@ -8,15 +8,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <!-- Multi-root / Local Compose: sibling ProjectReference when Logos exists. -->
-  <ItemGroup Condition="'$(LogosPath)' != ''">
-    <ProjectReference Include="$(LogosPath)/Bardie.Logos.Contracts/Bardie.Logos.Contracts.csproj" />
-    <ProjectReference Include="$(LogosPath)/Bardie.Logos.Channel/Bardie.Logos.Channel.csproj" />
-    <ProjectReference Include="$(LogosPath)/Bardie.Logos.Hosting/Bardie.Logos.Hosting.csproj" />
-  </ItemGroup>
-
-  <!-- Standalone CI / published nupkgs. -->
-  <ItemGroup Condition="'$(LogosPath)' == ''">
+  <ItemGroup>
     <PackageReference Include="Bardie.Logos.Contracts" />
     <PackageReference Include="Bardie.Logos.Channel" />
     <PackageReference Include="Bardie.Logos.Hosting" />

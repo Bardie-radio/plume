@@ -1,12 +1,10 @@
-# Build from the parent folder that contains `plume/` and `logos/`
-# (multi-root / Local Compose sibling layout → ProjectReference):
+# Build from this repo (or compose context ../plume):
 #
-#   docker build -f plume/Dockerfile -t plume .
+#   docker build -t plume .
 #
-# Standalone Plume-only builds need published Bardie.Logos.* nupkgs on a NuGet feed
-# (PackageReference when sibling Logos checkout is absent).
-#
+# Restores Bardie.Logos.* from nuget.org.
 # Vite assets are built during `dotnet publish` (NpmBuild target in Plume.csproj).
+#
 # META-OPS-002: Alpine final (busybox wget healthcheck — no curl).
 # Build on Debian SDK so Grpc.Tools protoc (glibc) runs; publish for linux-musl-x64.
 #
@@ -21,27 +19,22 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 WORKDIR /src
 
-COPY logos/Directory.Build.props logos/Directory.Packages.props logos/
-COPY logos/src/Bardie.Logos.Contracts logos/src/Bardie.Logos.Contracts/
-COPY logos/src/Bardie.Logos.Channel logos/src/Bardie.Logos.Channel/
-COPY logos/src/Bardie.Logos.Hosting logos/src/Bardie.Logos.Hosting/
+COPY Directory.Build.props Directory.Packages.props ./
+COPY Plume.csproj ./
+RUN dotnet restore Plume.csproj -r linux-musl-x64
 
-COPY plume/Directory.Build.props plume/Directory.Packages.props plume/
-COPY plume/Plume.csproj plume/
-RUN dotnet restore plume/Plume.csproj -r linux-musl-x64
-
-# Selective copy — parent build context includes sibling repos and local node_modules.
-COPY plume/package.json plume/package-lock.json plume/vite.config.js plume/
-COPY plume/assets/ plume/assets/
-COPY plume/Pages/ plume/Pages/
-COPY plume/Features/ plume/Features/
-COPY plume/Properties/ plume/Properties/
-COPY plume/wwwroot/ plume/wwwroot/
-COPY plume/Program.cs plume/appsettings.json plume/appsettings.Development.json plume/
-COPY plume/module.manifest.json plume/
+# Selective copy — avoid shipping local node_modules into the build context payload.
+COPY package.json package-lock.json vite.config.js ./
+COPY assets/ assets/
+COPY Pages/ Pages/
+COPY Features/ Features/
+COPY Properties/ Properties/
+COPY wwwroot/ wwwroot/
+COPY Program.cs appsettings.json appsettings.Development.json ./
+COPY module.manifest.json ./
 
 # Re-restore after source COPY (csproj-only restore assets are incomplete for full tree).
-RUN dotnet publish plume/Plume.csproj \
+RUN dotnet publish Plume.csproj \
       -c Release -r linux-musl-x64 --self-contained false \
       -o /app/publish
 
@@ -55,7 +48,7 @@ RUN apk add --no-cache su-exec \
     && chown -R "$APP_UID":"$APP_UID" /data /app
 
 COPY --from=build /app/publish .
-COPY plume/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && chown -R "$APP_UID":"$APP_UID" /app
 

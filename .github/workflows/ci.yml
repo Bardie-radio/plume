@@ -18,5 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Dockerfile runs Vite + AssertViteDistInPublishDir (fails if wwwroot/dist/*.js missing).
       - name: Build image
         run: docker build -t plume:ci .

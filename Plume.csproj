@@ -22,10 +22,32 @@
   </ItemGroup>
 
   <!-- Optional: build frontend assets on `dotnet publish` when Node is available. -->
-  <Target Name="NpmBuild" BeforeTargets="Publish" Condition="Exists('package.json')">
+  <!-- Vite writes wwwroot/dist during this target; re-include so publish picks them up
+       (Content items were evaluated before the files existed). -->
+  <Target Name="NpmBuild" BeforeTargets="BeforePublish" Condition="Exists('package.json') And '$(NpmBuildSkipped)' != 'true'">
     <Exec Command="npm ci" Condition="Exists('package-lock.json')" />
     <Exec Command="npm install" Condition="!Exists('package-lock.json')" />
     <Exec Command="npm run build" />
+    <ItemGroup>
+      <Content Include="wwwroot\dist\**\*" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    </ItemGroup>
+  </Target>
+
+  <!-- When Vite already ran (Docker), still ensure dist is published. -->
+  <Target Name="IncludeViteDist" BeforeTargets="ComputeFilesToPublish" Condition="Exists('wwwroot/dist')">
+    <ItemGroup>
+      <Content Include="wwwroot\dist\**\*" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Fail publish if Vite assets never landed in the publish dir (DEPLOY-PLUME-001). -->
+  <Target Name="AssertViteDistInPublishDir" AfterTargets="Publish">
+    <ItemGroup>
+      <_PublishedViteJs Include="$(PublishDir)wwwroot\dist\**\*.js" />
+    </ItemGroup>
+    <Error
+      Text="Published output missing wwwroot/dist/*.js. Run `npm run build` before publish (or fix IncludeViteDist / NpmBuild)."
+      Condition="'@(_PublishedViteJs)' == ''" />
   </Target>
 
 </Project>

@@ -3,7 +3,7 @@
 #   docker build -t plume .
 #
 # Restores Bardie.Logos.* from nuget.org.
-# Vite assets are built during `dotnet publish` (NpmBuild target in Plume.csproj).
+# Vite: `npm run build` into wwwroot/dist, then `dotnet publish` (IncludeViteDist + AssertViteDistInPublishDir).
 #
 # META-OPS-002: Alpine final (busybox wget healthcheck — no curl).
 # Build on Debian SDK so Grpc.Tools protoc (glibc) runs; publish for linux-musl-x64.
@@ -11,7 +11,7 @@
 # syntax=docker/dockerfile:1
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-# Node for Vite (NpmBuild runs on publish).
+# Node for Vite (built before publish; image also has npm if NpmBuild is re-enabled).
 COPY --from=node:22-bookworm /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=node:22-bookworm /usr/local/bin/node /usr/local/bin/node
 RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
@@ -30,13 +30,20 @@ COPY Pages/ Pages/
 COPY Features/ Features/
 COPY Properties/ Properties/
 COPY wwwroot/ wwwroot/
-COPY Program.cs appsettings.json appsettings.Development.json ./
+COPY Program.cs appsettings.json appsettings.Development.json appsettings.Production.json ./
 COPY module.manifest.json ./
 
-# Re-restore after source COPY (csproj-only restore assets are incomplete for full tree).
+# Build Vite into wwwroot/dist *before* publish so MSBuild sees the files.
+RUN npm ci && npm run build
+
+# Skip NpmBuild — assets already on disk. AssertViteDistInPublishDir fails the build if
+# wwwroot/dist/*.js is missing from the publish output (DEPLOY-PLUME-001).
 RUN dotnet publish Plume.csproj \
       -c Release -r linux-musl-x64 --self-contained false \
-      -o /app/publish
+      -p:NpmBuildSkipped=true \
+      -o /app/publish \
+ && test -d /app/publish/wwwroot/dist \
+ && find /app/publish/wwwroot/dist -type f -name '*.js' | grep -q .
 
 # Pin alpine3.22 with Kithara/Magpie (floating `10.0-alpine` → 3.23+).
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine3.22 AS final
@@ -59,7 +66,8 @@ ENV ASPNETCORE_URLS= \
     MODULE_TLS_DATA_PATH=/data/mtls \
     MODULE_WORK_GRPC_PORT=5001
 
-EXPOSE 8080 5001
+# HTTP only in EXPOSE — work gRPC (:5001) is mesh-internal; do not publish to the host.
+EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
 

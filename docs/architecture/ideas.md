@@ -11,9 +11,11 @@ Parking lot for Plume notes. Promote into [mvp/implementation-plan.md](mvp/imple
 | **PWA / themes** | Post-MVP installability and theming |
 | **Richer search UX** | Filters, source badges, keyboard nav — stay on shared search widget |
 | **Encode-mode UI** | Only if product revisits encode-alive create toggles; currently out of Plume scope |
-| **Vite build in CI** | Add when application islands land — not part of this docs pass |
+| **Assert Vite dist on publish** | **Done** — `AssertViteDistInPublishDir` in `Plume.csproj` + Dockerfile `find …/*.js` after publish; CI is plain `docker build` |
 | **Browser ICY demux** | MVP keeps Icecast opt-in ICY (`Icy-MetaData: 1` → VLC; plain MP3 for `<audio>`). Post-MVP: either [icecast-metadata-player](https://www.npmjs.com/package/icecast-metadata-player) (**LGPL-3.0+** — CORS + expose `Icy-MetaInt`; license note vs Plume MPL-2.0) **or** a small in-house icy-metaint strip → MSE. Now-playing already polls BFF — demux mainly for stream-synced titles / always-on ICY. Prefer custom demuxer if avoiding LGPL. Tracking: [plume#11](https://github.com/Bardie-radio/plume/issues/11) |
 | **Alpine final image** | **Done** (META-OPS-002) — `aspnet:10.0-alpine3.22` + busybox wget — [plume#13](https://github.com/Bardie-radio/plume/issues/13) / [kithara#33](https://github.com/Bardie-radio/kithara/issues/33) |
+| **Vite dist in GHCR** | **Publish gate (DEPLOY-PLUME-001)** — build fails without `wwwroot/dist/*.js`; older GHCR tags still need republish. Local `deploy-test` builds from source until then — [kithara pre-publish-audit](https://github.com/Bardie-radio/kithara/blob/main/docs/architecture/mvp/pre-publish-audit.md) |
+| **Forwarded proto / Secure cookies** | **PLUME-FWD-001 Fixed** — `UseForwardedHeaders` + `BARDIE_FORWARDED_HEADERS_*` (same knobs as Kithara) |
 
 ## Promoted
 
